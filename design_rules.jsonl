@@ -1,0 +1,72 @@
+[
+  {
+    "topic": "Visualization Complexity",
+    "condition": "When selecting chart types for general audiences to minimize perceived complexity",
+    "rule": "Prioritize familiar chart types (Bar Charts, Pie Charts, Line Charts) over specialized ones (Parallel Coordinates, Node-Link Diagrams).",
+    "evidence": "Crowdsourced study (N=318) rated Bar/Pie charts as significantly less complex (mean rating ~2.16-3.36) compared to Parallel Coordinates (rated highest) and Node-Link diagrams.",
+    "source_paper": "Eye of the Beholder Towards Measuring Visualization Complexity.pdf"
+  },
+  {
+    "topic": "Visualization Complexity",
+    "condition": "When designing visualizations that include data-dense elements",
+    "rule": "Include a descriptive title and a clear legend.",
+    "evidence": "Regression analysis showed that 'Sufficient description and legend' had a negative weight (-0.933), indicating a strong reduction in perceived complexity.",
+    "source_paper": "Eye of the Beholder Towards Measuring Visualization Complexity.pdf"
+  },
+  {
+    "topic": "Visualization Complexity",
+    "condition": "When considering the use of 3D effects in static charts",
+    "rule": "Avoid 3D visualizations or effects.",
+    "evidence": "Multilinear regression analysis identified '3D visualization' as a factor that significantly increases perceived complexity (weight +1.212).",
+    "source_paper": "Eye of the Beholder Towards Measuring Visualization Complexity.pdf"
+  },
+  {
+    "topic": "Dashboard Design",
+    "condition": "When designing game analytics dashboards for players of varying skill levels",
+    "rule": "Use canonical charts (Heatmaps, Line Charts) instead of complex ones (Scatterplots, Icicle Plots) for core metrics.",
+    "evidence": "User testing showed significantly higher accuracy for Heatmaps (98.19%) and Line Charts (78.92%) compared to Scatterplots (67.47%) and Icicle Plots (75.30%).",
+    "source_paper": "Building a Data Dashboard for Magic The Gathering Initial Design Considerations.pdf"
+  },
+  {
+    "topic": "Dashboard Design",
+    "condition": "When selecting metrics for a performance-oriented dashboard",
+    "rule": "Prioritize outcome-driven metrics (e.g., Win Rate, Wins vs. Losses) over peripheral or stochastic metrics (e.g., Dice Rolls, Duration).",
+    "evidence": "User task analysis (N=68) showed high interest in Win Rate (M=1.62) versus negative interest in peripheral metrics like pause duration (M=-0.63).",
+    "source_paper": "Building a Data Dashboard for Magic The Gathering Initial Design Considerations.pdf"
+  },
+  {
+    "topic": "Color Optimization",
+    "condition": "When adjusting brand colors to meet WCAG accessibility (contrast) standards",
+    "rule": "Modify Lightness (L) and Chroma (C) in the OKLCH color space while keeping Hue (H) constant.",
+    "evidence": "Algorithm evaluation on 10,000 color pairs resolved 77.22% of violations with a median perceptual change of only 0.76 Delta E, preserving brand identity better than RGB adjustments.",
+    "source_paper": "Perceptually-Minimal Color Optimization for Web Accessibility A Multi-Phase Constrained Approach.pdf"
+  },
+  {
+    "topic": "Medical Visualization",
+    "condition": "When analyzing differences among multiple subgroups (e.g., healthy vs. pathological cohorts)",
+    "rule": "Adopt a 'hypothesis-based' inferential task design rather than a 'hypothesis-free' exploratory approach.",
+    "evidence": "Case study analysis (GUCCI tool) showed that hypothesis-based designs improve the interpretability and specificity of subgroup comparisons in clinical decision support.",
+    "source_paper": "A Design Study Process Model for Medical Visualization.pdf"
+  },
+  {
+    "topic": "Audience Adaptation",
+    "condition": "When designing for low-literacy audiences vs. experts",
+    "rule": "Use redundancy (e.g., labeling bars directly + axis) for novices, but reduce redundancy for experts to avoid clutter.",
+    "evidence": "Expert study (N=18) found that redundancy helps novices reduce abstraction, whereas experts penalize it as 'clutter' that hinders efficiency.",
+    "source_paper": "Structured Visualization Design Knowledge for Grounding Generative Reasoning and Situated Feedback.pdf"
+  },
+  {
+    "topic": "Color Encoding",
+    "condition": "When choosing colormaps for categorical data lookup tasks",
+    "rule": "Rainbow scales (high hue variation) can be acceptable for rapid lookup tasks, despite their general unpopularity for magnitude estimation.",
+    "evidence": "Analysis of design guidelines reveals a 'Viewpoint Divergence': while generally discouraged for distorting data magnitudes, hue-rich scales are cited as effective for rapid legend matching in specific contexts.",
+    "source_paper": "Structured Visualization Design Knowledge for Grounding Generative Reasoning and Situated Feedback.pdf"
+  },
+  {
+    "topic": "Interaction Design",
+    "condition": "When using complex charts (like scatterplots) in a dashboard",
+    "rule": "Pair complex charts with interactive features (hover-to-reveal, filtering, brushing) to mitigate interpretation challenges.",
+    "evidence": "Qualitative feedback indicated that static scatterplots were 'unintuitive' regarding precise values, but users requested interactivity to solve the difficulty of precise lookups.",
+    "source_paper": "Building a Data Dashboard for Magic The Gathering Initial Design Considerations.pdf"
+  }
+]
