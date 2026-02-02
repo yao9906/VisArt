@@ -1,10 +1,14 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 import os
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from graph_engine import get_rag_system
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # --- PROXY CONFIGURATION ---
 # Set V2Ray proxy explicitly if not already in env
@@ -50,15 +54,20 @@ class RetrievalResult(BaseModel):
     technique: str
     coming_from_paper: Optional[str] = None
     related_applications: List[str] = []
+    id: Optional[str] = None
+
+class RetrievalResponse(BaseModel):
+    results: List[RetrievalResult]
+    trace: Optional[Dict[str, Any]] = None
 
 # Removed deprecated @app.on_event("startup") in favor of lifespan
 
-@app.post("/retrieve", response_model=List[RetrievalResult])
+@app.post("/retrieve", response_model=RetrievalResponse)
 async def retrieve_context(request: QueryRequest):
     try:
         rag = get_rag_system()
-        results = rag.retrieve(request.query, request.top_k)
-        return results
+        # Returns { "results": [...], "trace": {...} }
+        return rag.retrieve(request.query, request.top_k)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

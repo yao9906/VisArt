@@ -73,15 +73,22 @@ const D3Renderer: React.FC<D3RendererProps> = ({
         // Explicitly pass variables into the isolated function scope
         // Note: We do NOT declare 'container' here to avoid naming conflicts if the LLM code defines it.
         // The LLM is instructed to use d3.select("#" + containerId).
-        const executeCode = new Function('d3', 'containerId', 'data', 'onHover', 'width', 'height', `
-          "use strict";
-          try {
-            ${code}
-          } catch (e) {
-            console.error("Inner D3 Runtime Error:", e);
-            throw e;
-          }
-        `);
+        let executeCode;
+        try {
+          executeCode = new Function('d3', 'containerId', 'data', 'onHover', 'width', 'height', `
+            "use strict";
+            try {
+              ${code}
+            } catch (e) {
+              console.error("Inner D3 Runtime Error:", e);
+              throw e;
+            }
+          `);
+        } catch (syntaxErr) {
+           console.error("D3 Code Syntax Error:", syntaxErr);
+           setError("Generated Code Syntax Error: " + (syntaxErr as any).message);
+           return;
+        }
         
         executeCode(d3WithPlugins, containerId, clonedData, onHover, width, height);
       } catch (err: any) {

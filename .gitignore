@@ -1,16 +1,3 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-.venv/
-venv/
-backend/.venv/
-backend/venv/
-
-# Environment variables
-.env
-.env.local
-
 # Logs
 logs
 *.log

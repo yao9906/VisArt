@@ -6,6 +6,7 @@ import { COMPLEX_TEST_DATA } from './constants';
 import { generateStandardViz, getCritiqueAndRetrieve, refineViz } from './services/geminiService';
 import AgentConsole from './components/AgentConsole';
 import D3Renderer from './components/D3Renderer';
+import RAGGraphInspector from './components/RAGGraphInspector';
 
 const App: React.FC = () => {
   const [data, setData] = useState<any[]>(COMPLEX_TEST_DATA);
@@ -164,36 +165,44 @@ const App: React.FC = () => {
     }));
 
     try {
-      // 1. Baseline
-      setActiveStep(AgentRole.GENERATOR);
-      const standardCode = await generateStandardViz(finalPrompt, data);
-      const standardLogs = [{ role: AgentRole.GENERATOR, content: "Structural baseline synthesized from data schema.", timestamp: Date.now() }];
-      
-      const genSnapshot = { standardCode, critique: '', refinedCode: '', retrievedItems: [], logs: standardLogs };
-      const genId = addNode(AgentRole.GENERATOR, "Baseline", null, genSnapshot);
-      setState(prev => ({ ...prev, standardCode, logs: standardLogs }));
-
-      // 2. Critique & Retrieval
+      // 1. Retrieval (RAG) - Skip standard baseline, go straight to fetching context
       setActiveStep(AgentRole.CRITIC);
-      const { critique, ids, graphContext } = await getCritiqueAndRetrieve(standardCode, finalPrompt, designGraph, d3Knowledge);
+      const { critique, ids, graphContext, trace } = await getCritiqueAndRetrieve("", finalPrompt, designGraph, d3Knowledge);
       
       const d3Found = d3Knowledge.filter(i => ids.includes(i.id));
       const found = [...d3Found, ...(graphContext || [])];
       
-      const criticLogs = [...standardLogs, { role: AgentRole.CRITIC, content: `Design Audit: ${critique.substring(0, 150)}...`, timestamp: Date.now() }];
+      const ragLogs = [{ role: AgentRole.CRITIC, content: `Knowledge Graph Retrieval Complete. Context size: ${found.length} items.`, timestamp: Date.now() }];
       
-      const critSnapshot = { standardCode, critique, refinedCode: '', retrievedItems: found, logs: criticLogs };
-      const critId = addNode(AgentRole.CRITIC, "Audit", genId, critSnapshot);
-      setState(prev => ({ ...prev, critique, retrievedItems: found, logs: criticLogs }));
+      // We don't have code yet, so snapshot just has context
+      const critSnapshot = { standardCode: '', critique, refinedCode: '', retrievedItems: found, logs: ragLogs, ragTrace: trace };
+      const critId = addNode(AgentRole.CRITIC, "Analysis", null, critSnapshot);
+      setState(prev => ({ ...prev, critique, retrievedItems: found, logs: ragLogs, ragTrace: trace }));
 
-      // 3. Refinement
+      // 2. Generation & Insight (Refinement)
       setActiveStep(AgentRole.REFINER);
-      const refinedCode = await refineViz(standardCode, critique, data, found);
-      const refinerLogs = [...criticLogs, { role: AgentRole.REFINER, content: "Enhanced D3 implementation complete.", timestamp: Date.now() }];
+      // We pass empty string as baseCode. Ensure refineViz handles it (it does, it primarily uses prompt + context)
+      const result = await refineViz(finalPrompt, "", critique, data, found); 
       
-      const refSnapshot = { standardCode, critique, refinedCode, retrievedItems: found, logs: refinerLogs };
-      addNode(AgentRole.REFINER, "Refinement", critId, refSnapshot);
-      setState(prev => ({ ...prev, refinedCode, logs: refinerLogs }));
+      const refinerLogs = [...ragLogs, { role: AgentRole.REFINER, content: "Visualization and Insight Generation Complete.", timestamp: Date.now() }];
+      
+      const refSnapshot = { 
+        standardCode: '', 
+        critique, 
+        refinedCode: result.code, 
+        retrievedItems: found, 
+        logs: refinerLogs,
+        analysis: { insight: result.insight, nextSteps: result.nextSteps }
+      };
+      
+      addNode(AgentRole.REFINER, "Visualization", critId, refSnapshot);
+      
+      setState(prev => ({ 
+        ...prev, 
+        refinedCode: result.code, 
+        logs: refinerLogs, 
+        analysis: { insight: result.insight, nextSteps: result.nextSteps }
+      }));
 
     } catch (err) {
       const errorLog = { role: AgentRole.GENERATOR, content: "Workflow Error: " + (err as Error).message, timestamp: Date.now() };
@@ -214,17 +223,26 @@ const App: React.FC = () => {
     try {
       const isEvolving = !!state.refinedCode;
       const base = isEvolving ? state.refinedCode : state.standardCode;
-      const newCode = await refineViz(base, state.critique, data, state.retrievedItems, feedback, isEvolving);
+      // In iteration, the user feedback changes the intent. 
+      // We combine original prompt with feedback to maintain context while pivoting.
+      const iterationPrompt = `${state.originalPrompt}. REFINEMENT REQUEST: ${feedback}`;
+      const result = await refineViz(iterationPrompt, base, state.critique, data, state.retrievedItems, feedback, isEvolving);
       
       const iterationLogs = [...state.logs, { role: AgentRole.REFINER, content: `Manual Iteration: ${feedback}`, timestamp: Date.now() }];
       addNode(AgentRole.REFINER, "Iteration", activeNodeId, {
         standardCode: state.standardCode,
         critique: state.critique,
-        refinedCode: newCode,
+        refinedCode: result.code,
         retrievedItems: state.retrievedItems,
-        logs: iterationLogs
+        logs: iterationLogs,
+        analysis: { insight: result.insight, nextSteps: result.nextSteps }
       });
-      setState(prev => ({ ...prev, refinedCode: newCode, logs: iterationLogs }));
+      setState(prev => ({ 
+        ...prev, 
+        refinedCode: result.code, 
+        logs: iterationLogs,
+        analysis: { insight: result.insight, nextSteps: result.nextSteps }
+      }));
     } catch (err) {
       console.error(err);
     } finally {
@@ -294,75 +312,95 @@ const App: React.FC = () => {
              </div>
           </section>
 
-          <section className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm flex-grow flex flex-col min-h-0 group hover:shadow-md transition-shadow">
-            <h2 className="text-[9px] font-black text-indigo-500 uppercase mb-2 tracking-widest flex items-center gap-2 shrink-0">
-              RAG Grounding
+          <section className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm flex-grow flex flex-col min-h-0 group hover:shadow-md transition-shadow relative overflow-hidden">
+            <h2 className="text-[9px] font-black text-indigo-500 uppercase mb-2 tracking-widest flex items-center gap-2 shrink-0 z-10 relative">
+              RAG Process
+              <span className="text-[7px] bg-indigo-50 px-1 rounded text-slate-400 font-normal">
+                {state.ragTrace ? "Interactive Trace" : "Waiting"}
+              </span>
             </h2>
-            <div className="overflow-y-auto space-y-2 custom-scrollbar pr-1 flex-grow">
-              {state.retrievedItems.map((item: any, i) => (
-                <div key={i} className="bg-indigo-50/50 border border-indigo-100 rounded-md p-2 hover:bg-indigo-50 transition-colors cursor-help group">
-                  <div className="flex justify-between items-start mb-1">
-                    <span className="text-[7px] uppercase text-indigo-600 font-black px-1 py-0.5 bg-indigo-100 rounded tracking-tighter">
-                      {item.type || (item.technique ? 'GRAPH-RAG' : 'KNOWLEDGE')}
-                    </span>
-                    <span className="text-[7px] text-slate-400 font-mono opacity-0 group-hover:opacity-100 transition-opacity">
-                      {item.id || `#${i}`}
-                    </span>
-                  </div>
-                  <h4 className="text-[10px] font-bold text-slate-700 leading-tight mb-0.5">
-                    {item.task || item.title || item.topic || "Context Item"}
-                  </h4>
-                  
-                  <div className="text-[8px] text-slate-500">
-                     {item.technique && (
-                        <div className="mb-0.5 text-indigo-800/80 font-mono">
-                           &lt;{item.technique}&gt;
-                        </div>
-                     )}
-                     <p className="italic line-clamp-3">
-                        {item.rationale || item.description || item.rule || item.evidence || "Retrieved context."}
-                     </p>
-                     {item.coming_from_paper && (
-                        <div className="mt-1 opacity-60 text-[7px] border-t border-indigo-200/50 pt-1 flex items-center gap-1">
-                            <span>📄</span> {item.coming_from_paper}
-                        </div>
-                     )}
-                  </div>
+            
+            {/* Visual Trace Layer */}
+            {state.ragTrace && (
+               <div className="absolute inset-x-0 bottom-0 top-8 z-0 opacity-90">
+                 <RAGGraphInspector trace={state.ragTrace} />
+               </div>
+            )}
+
+            {/* List Layer (Overlay, hidden if trace exists or collapsible?) 
+                Actually, user asked for visualization instead of the list in the bottom left. 
+                But let's keep the list as a scrollable overlay or toggle?
+                For now, let's just make the list disappear or become minimal if trace is present, 
+                or better: putting the list in a tooltip or side-panel is hard. 
+                Let's replace the list with the graph completely as requested.
+            */}
+             {!state.ragTrace && (
+                <div className="overflow-y-auto space-y-2 custom-scrollbar pr-1 flex-grow relative z-10">
+                  {state.retrievedItems.map((item: any, i) => (
+                    <div key={i} className="bg-indigo-50/50 border border-indigo-100 rounded-md p-2 hover:bg-indigo-50 transition-colors cursor-help group">
+                      <div className="flex justify-between items-start mb-1">
+                        <span className="text-[7px] uppercase text-indigo-600 font-black px-1 py-0.5 bg-indigo-100 rounded tracking-tighter">
+                          {item.type || (item.technique ? 'GRAPH-RAG' : 'KNOWLEDGE')}
+                        </span>
+                        <span className="text-[7px] text-slate-400 font-mono opacity-0 group-hover:opacity-100 transition-opacity">
+                          {item.id || `#${i}`}
+                        </span>
+                      </div>
+                      <h4 className="text-[10px] font-bold text-slate-700 leading-tight mb-0.5">
+                        {item.task || item.title || item.topic || "Context Item"}
+                      </h4>
+                      <div className="text-[8px] text-slate-500 line-clamp-2">
+                         {item.technique && <span className="text-indigo-700 mr-1">&lt;{item.technique}&gt;</span>}
+                         {item.rationale || item.description || "Retrieved context."}
+                      </div>
+                    </div>
+                  ))}
+                  {state.retrievedItems.length === 0 && (
+                    <div className="h-full flex flex-col items-center justify-center text-slate-400 italic text-[9px] text-center">
+                      No context items yet.
+                    </div>
+                  )}
                 </div>
-              ))}
-              {state.retrievedItems.length === 0 && (
-                <div className="h-full flex flex-col items-center justify-center text-slate-400 italic text-[9px] text-center">
-                  No context items yet.
-                </div>
-              )}
-            </div>
+             )}
           </section>
         </div>
 
         {/* Center Column: Visualizations (Maximizing Height) */}
         <div className="col-span-6 flex flex-col gap-4 min-h-0">
-          <div className="flex-1 min-h-0 shadow-sm rounded-xl">
+          <div className="flex-[2] min-h-0 shadow-sm rounded-xl">
             <D3Renderer 
-              title="Phase 1: Baseline" 
-              containerId="standard-viz" 
-              code={state.standardCode} 
-              data={data} 
-              isLoading={activeStep === AgentRole.GENERATOR} 
-              onHover={(cat) => setState(s => ({ ...s, hoveredCategory: cat }))} 
-              hoveredCategory={state.hoveredCategory} 
-            />
-          </div>
-          <div className="flex-[1.5] min-h-0 shadow-sm rounded-xl">
-            <D3Renderer 
-              title="Phase 3: Scientific Refinement" 
+              title="Scientific Refinement" 
               containerId="enhanced-viz" 
               code={state.refinedCode} 
               data={data} 
-              isLoading={state.isGenerating && activeStep !== AgentRole.GENERATOR} 
+              isLoading={state.isGenerating} 
               onHover={(cat) => setState(s => ({ ...s, hoveredCategory: cat }))} 
               hoveredCategory={state.hoveredCategory} 
             />
           </div>
+          
+          {/* Analysis & Next Steps */}
+          {state.analysis && (
+            <div className="flex-1 min-h-[150px] bg-white border border-slate-200 rounded-xl p-3 shadow-sm overflow-hidden flex flex-col">
+              <div className="flex gap-4 h-full">
+                {/* Insights */}
+                <div className="flex-1 flex flex-col min-h-0">
+                   <h3 className="text-[9px] font-black text-indigo-600 uppercase mb-2 tracking-widest shrink-0">Key Insights</h3>
+                   <div className="flex-grow overflow-y-auto custom-scrollbar text-[10px] text-slate-600 leading-relaxed whitespace-pre-line pr-2 border-r border-slate-100">
+                      {state.analysis.insight}
+                   </div>
+                </div>
+                
+                {/* Next Steps */}
+                <div className="flex-1 flex flex-col min-h-0">
+                   <h3 className="text-[9px] font-black text-rose-500 uppercase mb-2 tracking-widest shrink-0">Required Next Steps</h3>
+                    <div className="flex-grow overflow-y-auto custom-scrollbar text-[10px] text-slate-600 leading-relaxed whitespace-pre-line pr-1">
+                      {state.analysis.nextSteps}
+                   </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right Column: Console & Feedback */}

@@ -49,8 +49,13 @@ export interface VisualizationState {
   refinedCode: string;
   isGenerating: boolean;
   logs: AgentLog[];
-  retrievedItems: RAGKnowledgeItem[];
+  retrievedItems: RAGKnowledgeItem[] | any[];
   hoveredCategory: string | null;
+  ragTrace?: any;
+  analysis?: {
+    insight: string;
+    nextSteps: string;
+  };
 }
 
 export interface WorkflowNode {
@@ -62,8 +67,13 @@ export interface WorkflowNode {
     standardCode: string;
     critique: string;
     refinedCode: string;
-    retrievedItems: RAGKnowledgeItem[];
+    retrievedItems: RAGKnowledgeItem[] | any[];
     logs: AgentLog[];
+    ragTrace?: any;
+    analysis?: {
+      insight: string;
+      nextSteps: string;
+    };
   };
   timestamp: number;
 }
