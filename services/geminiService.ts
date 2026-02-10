@@ -291,7 +291,7 @@ export const refineViz = async (
     Additionally, provide Analytical Insights and Next Steps based on the data and query.
     
     STRICT RULES:
-    1. DO NOT include any 'import' or 'require' statements.
+   1. DO NOT include any 'import' or 'require' statements.
     2. DO NOT use 'd3.json' or 'd3.csv'. Use the variable 'data' directly.
     3. Use the provided 'width' and 'height' variables for SVG sizing.
     4. Start your code by selecting the container: 'const container = d3.select("#" + containerId);'.
@@ -302,6 +302,7 @@ export const refineViz = async (
     9. IF dealing with hierarchical names (e.g. "A.B.C"), ONLY THEN use split('.') logic. Do not force it on flat data.
     10. ROBUSTNESS: ALWAYS check 'data' length. Recalculate 'd3.extent' or domains dynamically on the 'data'. DO NOT hardcode domains.
     11. SAFETY: Log 'data' at the start: 'console.log("D3 Input:", data)'. If data is empty, render a "No Data" text.
+    12. D3 VERSION IS v7. NO 'd3.timeAdd'. Use 'd3.time[Interval].offset(date, step)' (e.g. d3.timeDay.offset(d, 1)) or native Date methods.
     
     OUTPUT FORMAT: JSON
     {
