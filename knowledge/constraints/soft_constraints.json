@@ -1,0 +1,494 @@
+[
+    {
+        "id": "SC-EFF-001",
+        "type": "soft",
+        "weight": 3,
+        "layer": "encoding",
+        "name": "quantitative_position_preference",
+        "condition": {
+            "field_type": "quantitative",
+            "task": [
+                "compare",
+                "lookup"
+            ]
+        },
+        "preference": {
+            "prefer_channel": "position_common_scale",
+            "over": [
+                "length",
+                "area",
+                "color_luminance"
+            ]
+        },
+        "rationale": "Position on a common scale yields the most accurate quantitative judgments (Cleveland & McGill rank 1).",
+        "source": "Cleveland & McGill 1984"
+    },
+    {
+        "id": "SC-EFF-002",
+        "type": "soft",
+        "weight": 2,
+        "layer": "encoding",
+        "name": "temporal_line_preference",
+        "condition": {
+            "field_type": "temporal",
+            "data_continuity": "continuous"
+        },
+        "preference": {
+            "prefer_mark": "line",
+            "over": [
+                "bar",
+                "point"
+            ]
+        },
+        "rationale": "Line marks convey continuity and trend, which aligns with the inherent ordering of temporal data.",
+        "source": "Heer & Bostock 2010; Munzner 2014"
+    },
+    {
+        "id": "SC-EFF-003",
+        "type": "soft",
+        "weight": 2,
+        "layer": "encoding",
+        "name": "hierarchy_treemap_preference",
+        "condition": {
+            "data_structure": "hierarchical",
+            "task": "summarize"
+        },
+        "preference": {
+            "prefer_idiom": [
+                "treemap",
+                "sunburst",
+                "icicle"
+            ],
+            "over": [
+                "force_directed_graph"
+            ]
+        },
+        "rationale": "Space-filling layouts efficiently encode hierarchical size comparisons; force layouts waste space and make size comparison harder.",
+        "source": "Munzner 2014 Ch.11"
+    },
+    {
+        "id": "SC-EFF-004",
+        "type": "soft",
+        "weight": 1,
+        "layer": "encoding",
+        "name": "area_sqrt_scaling",
+        "condition": {
+            "channel": "area"
+        },
+        "preference": {
+            "use_scale": "sqrt",
+            "reason": "compensate_perceptual_underestimation"
+        },
+        "rationale": "Humans underestimate area by power law ~0.7. Using sqrt scaling makes perceived area proportional to data value.",
+        "source": "Flannery 1971; Stevens 1946"
+    },
+    {
+        "id": "SC-EFF-005",
+        "type": "soft",
+        "weight": 2,
+        "layer": "encoding",
+        "name": "familiarity_for_general_audience",
+        "condition": {
+            "audience": "general",
+            "task": [
+                "lookup",
+                "compare",
+                "summarize"
+            ]
+        },
+        "preference": {
+            "prefer_idiom": [
+                "bar_chart",
+                "line_chart",
+                "pie_chart",
+                "scatter"
+            ],
+            "over": [
+                "parallel_coordinates",
+                "chord_diagram",
+                "sankey"
+            ]
+        },
+        "rationale": "General audiences rate familiar charts (bar/pie) as significantly less complex. Familiarity increases trust and reduces cognitive load.",
+        "source": "Borgo et al. 2012; Trust Study (VIS)"
+    },
+    {
+        "id": "SC-COLOR-001",
+        "type": "soft",
+        "weight": 3,
+        "layer": "perception",
+        "name": "perceptual_uniform_colormap",
+        "condition": {
+            "data_type": "continuous_quantitative",
+            "encoding": "color"
+        },
+        "preference": {
+            "prefer_colormap": [
+                "viridis",
+                "magma",
+                "cividis",
+                "inferno"
+            ],
+            "over": [
+                "coolwarm_nonuniform",
+                "spectral"
+            ]
+        },
+        "rationale": "Perceptually uniform scales ensure 10% data change looks like 10% visual change across the entire range.",
+        "source": "Smith & van der Walt; Viridis paper"
+    },
+    {
+        "id": "SC-COLOR-002",
+        "type": "soft",
+        "weight": 2,
+        "layer": "perception",
+        "name": "cvd_safe_categorical_palette",
+        "condition": {
+            "encoding": "color_hue",
+            "audience": "general_unknown"
+        },
+        "preference": {
+            "prefer_palette": "okabe_ito",
+            "colors": [
+                "#E69F00",
+                "#56B4E9",
+                "#009E73",
+                "#F0E442",
+                "#0072B2",
+                "#D55E00",
+                "#CC79A7",
+                "#000000"
+            ]
+        },
+        "rationale": "Okabe-Ito palette is empirically verified unambiguous for Protanopia, Deuteranopia, and Tritanopia.",
+        "source": "Okabe & Ito 2008"
+    },
+    {
+        "id": "SC-COLOR-003",
+        "type": "soft",
+        "weight": 2,
+        "layer": "perception",
+        "name": "semantic_color_mapping",
+        "condition": {
+            "data_labels": "physical_objects_with_color_associations"
+        },
+        "preference": {
+            "force_map_to_natural_colors": true
+        },
+        "rationale": "Semantically resonant colors align with mental models, facilitating immediate recognition without legend consultation.",
+        "source": "Lin et al. 2013"
+    },
+    {
+        "id": "SC-COLOR-004",
+        "type": "soft",
+        "weight": 1,
+        "layer": "perception",
+        "name": "high_cardinality_grouping",
+        "condition": {
+            "categorical_count": ">12"
+        },
+        "preference": {
+            "strategies": [
+                "aggregate_tail_to_other",
+                "direct_labeling",
+                "small_multiples_faceting"
+            ]
+        },
+        "rationale": "Prevents 'confetti' charts. 'Others' grouping reduces clutter; faceting uses spatial position instead of color for separation.",
+        "source": "Setlur & Stone 2015; General Best Practice"
+    },
+    {
+        "id": "SC-COLOR-005",
+        "type": "soft",
+        "weight": 1,
+        "layer": "perception",
+        "name": "extended_palette_luminance_variation",
+        "condition": {
+            "categorical_count": ">10",
+            "no_aggregation": true
+        },
+        "preference": {
+            "vary": [
+                "luminance",
+                "saturation"
+            ],
+            "not_just": "hue_rotation"
+        },
+        "rationale": "Human visual system is more sensitive to luminance contrast than hue. Varying L* expands distinguishable color space.",
+        "source": "Setlur & Stone 2015"
+    },
+    {
+        "id": "SC-INTER-001",
+        "type": "soft",
+        "weight": 3,
+        "layer": "interaction",
+        "name": "density_svg_threshold",
+        "condition": {
+            "data_density": ">1000"
+        },
+        "preference": {
+            "prefer_renderer": "canvas",
+            "over": "svg"
+        },
+        "rationale": "DOM manipulation becomes a bottleneck above ~1000 marks; Canvas rasterization improves performance.",
+        "source": "Ellis & Dix 2007"
+    },
+    {
+        "id": "SC-INTER-002",
+        "type": "soft",
+        "weight": 3,
+        "layer": "interaction",
+        "name": "density_aggregation_threshold",
+        "condition": {
+            "data_density": ">10000",
+            "data_type": "continuous_2d"
+        },
+        "preference": {
+            "prefer_strategy": [
+                "hexbin",
+                "density_contour",
+                "sampling"
+            ],
+            "over": "individual_marks"
+        },
+        "rationale": "Spatial aggregation reduces complexity by representing groups instead of individuals, eliminating occlusion.",
+        "source": "Ellis & Dix 2007"
+    },
+    {
+        "id": "SC-INTER-003",
+        "type": "soft",
+        "weight": 2,
+        "layer": "interaction",
+        "name": "temporal_focus_context",
+        "condition": {
+            "data_type": "time_series",
+            "viewport_constraint": true
+        },
+        "preference": {
+            "provide": "focus_plus_context_navigation",
+            "technique": "brushX_on_overview_chart"
+        },
+        "rationale": "Decouples navigation (context) from analysis (focus), allowing overview while inspecting details.",
+        "source": "Cockburn et al. 2008"
+    },
+    {
+        "id": "SC-INTER-004",
+        "type": "soft",
+        "weight": 2,
+        "layer": "interaction",
+        "name": "explore_task_requires_brush",
+        "condition": {
+            "task": "explore"
+        },
+        "preference": {
+            "must_include": [
+                "brush_or_filter",
+                "tooltip"
+            ]
+        },
+        "rationale": "Exploratory tasks require interactive subsetting to form and test hypotheses.",
+        "source": "Heer & Shneiderman 2012; Shneiderman 1996"
+    },
+    {
+        "id": "SC-INTER-005",
+        "type": "soft",
+        "weight": 2,
+        "layer": "interaction",
+        "name": "brush_context_preservation",
+        "condition": {
+            "interaction": "brush_highlight"
+        },
+        "preference": {
+            "unselected_behavior": "reduce_opacity",
+            "not": "remove_from_view"
+        },
+        "rationale": "Preserves context (global distribution position) while visually emphasizing the active selection.",
+        "source": "Heer & Shneiderman 2012"
+    },
+    {
+        "id": "SC-INTER-006",
+        "type": "soft",
+        "weight": 1,
+        "layer": "interaction",
+        "name": "small_target_voronoi",
+        "condition": {
+            "mark_radius": "<5px",
+            "data_type": "scatterplot"
+        },
+        "preference": {
+            "use": "d3.Delaunay_voronoi_overlay"
+        },
+        "rationale": "Expands interactive target area following Fitts's Law to maximize selection speed.",
+        "source": "Fitts 1954"
+    },
+    {
+        "id": "SC-INTER-007",
+        "type": "soft",
+        "weight": 1,
+        "layer": "interaction",
+        "name": "time_series_bisector_snap",
+        "condition": {
+            "chart_type": "line_chart",
+            "x_axis": "temporal"
+        },
+        "preference": {
+            "use": "d3.bisector_snap_to_nearest"
+        },
+        "rationale": "Eliminates need for pixel-perfect hovering by snapping to the closest valid data point.",
+        "source": "Heer & Shneiderman 2012"
+    },
+    {
+        "id": "SC-INTER-008",
+        "type": "soft",
+        "weight": 1,
+        "layer": "interaction",
+        "name": "tooltip_boundary_detection",
+        "condition": {
+            "has_tooltip": true
+        },
+        "preference": {
+            "flip_position_when_near_viewport_edge": true
+        },
+        "rationale": "Context-sensitive placement ensures tooltips are never clipped by browser window edge.",
+        "source": "Munzner 2014"
+    },
+    {
+        "id": "SC-DESIGN-001",
+        "type": "soft",
+        "weight": 2,
+        "layer": "encoding",
+        "name": "title_and_legend",
+        "condition": {
+            "visualization": "any"
+        },
+        "preference": {
+            "must_include": [
+                "descriptive_title",
+                "legend_or_direct_labels"
+            ]
+        },
+        "rationale": "Title and legend reduce perceived complexity by -0.933 weight. Direct labeling preferred when space allows.",
+        "source": "Borgo et al. 2012; Munzner 2014"
+    },
+    {
+        "id": "SC-DESIGN-002",
+        "type": "soft",
+        "weight": 2,
+        "layer": "encoding",
+        "name": "aspect_ratio_banking",
+        "condition": {
+            "chart_type": "line_chart"
+        },
+        "preference": {
+            "bank_average_slope_to_45_degrees": true
+        },
+        "rationale": "Optimizes perceptibility of trends and local rates of change by matching aspect ratio to data variation.",
+        "source": "Cleveland et al. 1988"
+    },
+    {
+        "id": "SC-DESIGN-003",
+        "type": "soft",
+        "weight": 1,
+        "layer": "encoding",
+        "name": "redundancy_for_novices",
+        "condition": {
+            "audience": "novice_low_literacy"
+        },
+        "preference": {
+            "use_redundant_encoding": true,
+            "example": "label_bars_directly_AND_axis"
+        },
+        "rationale": "Redundancy helps novices reduce abstraction barrier. Experts may find it cluttering.",
+        "source": "Structured Vis Design Knowledge (VIS 2024)"
+    },
+    {
+        "id": "SC-DESIGN-004",
+        "type": "soft",
+        "weight": 2,
+        "layer": "perception",
+        "name": "dark_mode_desaturation",
+        "condition": {
+            "background_luminance": "<0.2"
+        },
+        "preference": {
+            "desaturate_large_fills": true,
+            "recalculate_contrast": true
+        },
+        "rationale": "Fully saturated bright colors on dark backgrounds cause optical vibration (halation) and eye strain.",
+        "source": "Material Design; WCAG Guidance"
+    },
+    {
+        "id": "SC-DESIGN-005",
+        "type": "soft",
+        "weight": 2,
+        "layer": "encoding",
+        "name": "complex_chart_requires_interaction",
+        "condition": {
+            "chart_type": [
+                "scatterplot",
+                "parallel_coordinates",
+                "network_graph"
+            ]
+        },
+        "preference": {
+            "pair_with": [
+                "hover_tooltip",
+                "filter",
+                "brush"
+            ]
+        },
+        "rationale": "Static complex charts are 'unintuitive' for precise value lookup. Interactivity mitigates interpretation challenges.",
+        "source": "MTG Dashboard Study (VIS)"
+    },
+    {
+        "id": "SC-PERF-001",
+        "type": "soft",
+        "weight": 1,
+        "layer": "interaction",
+        "name": "debounce_linked_updates",
+        "condition": {
+            "linked_views": true,
+            "data_density": ">5000"
+        },
+        "preference": {
+            "debounce_ms": "100-300"
+        },
+        "rationale": "Prevents laggy cursor effect by delaying expensive re-rendering until user pauses interaction.",
+        "source": "Heer & Shneiderman 2012"
+    },
+    {
+        "id": "SC-PERF-002",
+        "type": "soft",
+        "weight": 1,
+        "layer": "interaction",
+        "name": "latency_feedback",
+        "condition": {
+            "interaction_latency": ">100ms"
+        },
+        "preference": {
+            "show_loading_indicator": true
+        },
+        "rationale": "0.1s is the limit for feeling instantaneous; delays beyond require visual feedback to maintain trust.",
+        "source": "Nielsen 1993"
+    },
+    {
+        "id": "SC-ACCESS-001",
+        "type": "soft",
+        "weight": 2,
+        "layer": "perception",
+        "name": "color_accessibility_optimization",
+        "condition": {
+            "brand_colors_present": true,
+            "wcag_violation": true
+        },
+        "preference": {
+            "modify_in_oklch": [
+                "lightness",
+                "chroma"
+            ],
+            "preserve": "hue"
+        },
+        "rationale": "Modifying L and C in OKLCH resolves 77.22% of contrast violations with median ΔE of only 0.76, preserving brand identity.",
+        "source": "Perceptually-Minimal Color Optimization (VIS)"
+    }
+]

@@ -1,0 +1,269 @@
+{
+    "meta": {
+        "description": "Multi-level typology of abstract visualization tasks, linking user intent to recommended idioms and interactions.",
+        "primary_sources": [
+            "Brehmer & Munzner (2013) - A Multi-Level Typology of Abstract Visualization Tasks",
+            "Shneiderman (1996) - The Eyes Have It: Visual Information Seeking Mantra",
+            "Munzner (2014) - Visualization Analysis and Design"
+        ]
+    },
+    "why": {
+        "consume": {
+            "discover": {
+                "description": "Find new knowledge, generate or verify hypotheses from data.",
+                "sub_tasks": [
+                    "find_anomalies",
+                    "find_clusters",
+                    "find_trends",
+                    "find_correlations"
+                ],
+                "recommended_idioms": [
+                    "scatterplot",
+                    "histogram",
+                    "parallel_coordinates",
+                    "heatmap"
+                ],
+                "recommended_interactions": [
+                    "brush",
+                    "filter",
+                    "zoom",
+                    "details_on_demand"
+                ]
+            },
+            "present": {
+                "description": "Communicate already-known findings to an audience.",
+                "sub_tasks": [
+                    "annotate_findings",
+                    "emphasize_key_points",
+                    "tell_story"
+                ],
+                "recommended_idioms": [
+                    "bar_chart",
+                    "line_chart",
+                    "annotated_scatterplot",
+                    "small_multiples"
+                ],
+                "recommended_interactions": [
+                    "scroll_narrative",
+                    "step_animation",
+                    "hover_tooltip"
+                ]
+            },
+            "enjoy": {
+                "description": "Casual browsing or aesthetic appreciation of data.",
+                "sub_tasks": [
+                    "browse_casually",
+                    "appreciate_aesthetics"
+                ],
+                "recommended_idioms": [
+                    "data_art",
+                    "animated_visualization",
+                    "infographic"
+                ],
+                "recommended_interactions": [
+                    "pan",
+                    "zoom",
+                    "playback"
+                ]
+            }
+        },
+        "produce": {
+            "annotate": {
+                "description": "Add notes, tags, or highlights to existing visualizations.",
+                "recommended_interactions": [
+                    "click_to_annotate",
+                    "text_input_overlay"
+                ]
+            },
+            "record": {
+                "description": "Save or export current visualization state.",
+                "recommended_interactions": [
+                    "screenshot",
+                    "bookmark_state",
+                    "export_svg"
+                ]
+            },
+            "derive": {
+                "description": "Compute new data attributes from existing ones.",
+                "recommended_interactions": [
+                    "formula_input",
+                    "aggregation_controls",
+                    "binning"
+                ]
+            }
+        }
+    },
+    "how_search": {
+        "lookup": {
+            "target": "known",
+            "location": "known",
+            "description": "User knows what they want and where it is. E.g., 'What is the GDP of France in 2020?'",
+            "recommended_idioms": [
+                "table",
+                "labeled_bar_chart",
+                "annotated_line"
+            ],
+            "recommended_interactions": [
+                "direct_label",
+                "search_box",
+                "tooltip"
+            ]
+        },
+        "browse": {
+            "target": "known",
+            "location": "unknown",
+            "description": "User knows what they want but must scan to find it. E.g., 'Find all countries with GDP > 1T'",
+            "recommended_idioms": [
+                "sorted_bar_chart",
+                "filtered_table",
+                "choropleth_map"
+            ],
+            "recommended_interactions": [
+                "sort",
+                "filter_slider",
+                "highlight"
+            ]
+        },
+        "locate": {
+            "target": "unknown",
+            "location": "known",
+            "description": "User knows where to look but doesn't know what they'll find. E.g., 'What happened in Q3?'",
+            "recommended_idioms": [
+                "line_chart_with_annotation",
+                "calendar_heatmap",
+                "gantt_chart"
+            ],
+            "recommended_interactions": [
+                "zoom_to_region",
+                "tooltip",
+                "focus_context"
+            ]
+        },
+        "explore": {
+            "target": "unknown",
+            "location": "unknown",
+            "description": "Open-ended investigation. User doesn't know what to expect. E.g., 'Are there any patterns?'",
+            "recommended_idioms": [
+                "scatterplot_matrix",
+                "parallel_coordinates",
+                "dimensionality_reduction"
+            ],
+            "recommended_interactions": [
+                "brush_link",
+                "dynamic_query",
+                "lasso_select",
+                "zoom_pan"
+            ]
+        }
+    },
+    "how_query": {
+        "identify": {
+            "description": "Determine characteristics of a single target. E.g., 'What are the properties of this outlier?'",
+            "input": "one_target",
+            "output": "characteristics",
+            "recommended_idioms": [
+                "detail_view",
+                "tooltip",
+                "data_table"
+            ],
+            "key_channels": [
+                "position",
+                "color",
+                "label"
+            ]
+        },
+        "compare": {
+            "description": "Determine similarities/differences between multiple targets. E.g., 'How do regions A and B differ?'",
+            "input": "multiple_targets",
+            "output": "similarities_and_differences",
+            "recommended_idioms": [
+                "grouped_bar",
+                "small_multiples",
+                "juxtaposed_views",
+                "superimposed_lines"
+            ],
+            "key_channels": [
+                "position_common_scale",
+                "color_hue",
+                "spatial_separation"
+            ]
+        },
+        "summarize": {
+            "description": "Determine aggregate properties of the entire dataset. E.g., 'What is the overall distribution?'",
+            "input": "all_data",
+            "output": "aggregate_properties",
+            "recommended_idioms": [
+                "histogram",
+                "boxplot",
+                "violin_plot",
+                "density_contour",
+                "treemap"
+            ],
+            "key_channels": [
+                "area",
+                "length",
+                "position"
+            ]
+        }
+    },
+    "composite_task_patterns": [
+        {
+            "pattern": "Overview + Drill-down",
+            "tasks": [
+                "explore",
+                "browse",
+                "identify"
+            ],
+            "mantra": "Overview first, zoom and filter, then details on demand (Shneiderman 1996)",
+            "idiom_combination": "Treemap/Overview → Click → Detail bar chart",
+            "interactions": [
+                "semantic_zoom",
+                "click_to_drill",
+                "breadcrumb_navigation"
+            ]
+        },
+        {
+            "pattern": "Compare + Summarize",
+            "tasks": [
+                "compare",
+                "summarize"
+            ],
+            "idiom_combination": "Small multiples + linked summary statistics",
+            "interactions": [
+                "brush_link",
+                "sort",
+                "aggregate_toggle"
+            ]
+        },
+        {
+            "pattern": "Temporal Exploration",
+            "tasks": [
+                "locate",
+                "discover",
+                "compare"
+            ],
+            "idiom_combination": "Line chart (focus) + Context bar (overview) + Brush",
+            "interactions": [
+                "brush_x",
+                "zoom",
+                "time_slider",
+                "animate"
+            ]
+        },
+        {
+            "pattern": "Spatial Analysis",
+            "tasks": [
+                "locate",
+                "browse",
+                "summarize"
+            ],
+            "idiom_combination": "Choropleth/Dot map + Linked histogram",
+            "interactions": [
+                "pan",
+                "zoom",
+                "spatial_filter",
+                "cross_filter"
+            ]
+        }
+    ]
+}

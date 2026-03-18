@@ -1,0 +1,655 @@
+%% 
+%% VisArt paper — elsarticle format (Visual Informatics style)
+%% Follows the narrative depth and structure of the MulNetVis paper
+%%
+\documentclass[final,5p,times,twocolumn]{elsarticle}
+
+%% ===============================================
+%% Packages
+%% ===============================================
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{mathptmx}
+\usepackage{graphicx}
+\graphicspath{{figs/}{figures/}{images/}{./}}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{lineno}
+\usepackage[hidelinks]{hyperref}
+\usepackage[capitalise]{cleveref}
+
+%% ===============================================
+%% Journal
+%% ===============================================
+\journal{Visual Informatics}
+
+%% ===============================================
+%% Custom commands
+%% ===============================================
+\newcommand{\sysname}{\textsc{VisArt}}
+\newcommand{\eg}{e.g.}
+\newcommand{\ie}{i.e.}
+\newcommand{\etal}{\textit{et al.}}
+
+\begin{document}
+
+\begin{frontmatter}
+
+%% ===============================================
+%% Title
+%% ===============================================
+\title{%
+  VisArt: Constraint-Guided Visualization Generation with \\
+  Automated Design Linting for LLM-Based Visual Analytics%
+}
+
+%% ===============================================
+%% Authors & Affiliations (anonymized for review)
+%% ===============================================
+\author{Anonymous Authors}
+
+%% ===============================================
+%% Abstract
+%% ===============================================
+\begin{abstract}
+Large Language Models (LLMs) have demonstrated remarkable capability in generating visualization code from natural language, yet the quality of their output frequently violates decades of established design principles---producing misleading visual encodings, perceptually ineffective color mappings, and interaction patterns that impede analytical workflows.
+We present \sysname{}, a visual analytics system that transforms LLM-based visualization generation from unconstrained code synthesis into \textit{constraint-guided design reasoning}.
+Guided by four design goals derived from a systematic review of LLM-based visualization research, \sysname{} introduces three tightly integrated components.
+First, a \textbf{four-layer visualization design constraint ontology} comprising 42 formalized constraints (16 hard, 26 soft) grounded in foundational visualization research, organized across data characterization, task inference, encoding effectiveness, and perception/interaction layers.
+Second, a \textbf{Constraint Reasoning Engine} that automatically profiles input data, infers visualization tasks using the Brehmer--Munzner typology, ranks encoding channels via the Cleveland--McGill hierarchy, and assembles structured constraint contexts for LLM prompt injection.
+Third, \textbf{Design Lint}, the first automated three-layer quality auditing system for LLM-generated visualizations, which performs static code analysis, runtime SVG DOM inspection, and constraint compliance checking to produce a quantitative Design Quality Score (DQS) with closed-loop auto-repair.
+We further contribute \textbf{VisArt-Bench}, an evaluation benchmark comprising 12 tasks across 8 visualization categories, evaluated through 6 automated metrics.
+Comparative experiments and expert case studies demonstrate that constraint-guided generation significantly improves design quality over unconstrained baselines.
+\end{abstract}
+
+%% ===============================================
+%% Keywords
+%% ===============================================
+\begin{keyword}
+Visual Analytics \sep Visualization Generation \sep Large Language Models \sep Design Constraints \sep Design Linting
+\end{keyword}
+
+\end{frontmatter}
+
+\linenumbers
+
+%% ===============================================
+%% 1  INTRODUCTION
+%% ===============================================
+\section{Introduction}
+\label{sec:intro}
+
+The emergence of Large Language Models as tools for generating code---including visualization specifications and D3.js programs---has opened exciting possibilities for democratizing data visualization~\cite{dibia2023lida,li2024lightva,zhao2025proactiveva}.
+Given only a natural language prompt such as ``Show the trend of monthly temperatures,'' an LLM can produce executable visualization code in seconds.
+Recent agent-based systems such as LightVA~\cite{li2024lightva} and ProactiveVA~\cite{zhao2025proactiveva} further demonstrate that LLM agents can plan and execute complex visual analytics pipelines, coordinating data processing, chart generation, and insight extraction with minimal user effort.
+
+However, this remarkable code-synthesis capability masks a critical, under-examined limitation: \textit{LLMs generate visualizations without systematic adherence to established visualization design principles.}
+Consider a common scenario: when asked to visualize categorical sales data, an LLM might generate a line chart (implying false continuity between discrete categories), adopt a rainbow colormap for continuous values (creating perceptual artifacts and failing colorblind users~\cite{borland2007rainbow}), or encode quantitative values using shape (a channel incapable of conveying magnitude~\cite{stevens1946theory}).
+Each of these decisions violates well-established guidelines from decades of visualization research~\cite{cleveland1984graphical,mackinlay1986automating,munzner2014visualization}, yet the violations go undetected because current LLM-based systems lack formal mechanisms for design quality assurance.
+
+The consequences extend far beyond aesthetics.
+Borland and Taylor~\cite{borland2007rainbow} demonstrated that rainbow colormaps produce false perceptual boundaries.
+Mackinlay's expressiveness principle~\cite{mackinlay1986automating} establishes that encoding nominal data with ordered channels implies a nonexistent ordering, potentially leading users to draw incorrect conclusions.
+Cleveland and McGill~\cite{cleveland1984graphical} showed that human perceptual accuracy varies dramatically across visual channels, with position being 2--3$\times$ more accurate than area or color luminance.
+
+Existing approaches to improving LLM-generated visualizations have focused primarily on retrieval-augmented generation (RAG), where relevant design ``rules'' are retrieved and injected into LLM prompts as unstructured text~\cite{li2024lightva,lu2024insightlens}.
+While this can surface relevant guidelines, three fundamental limitations persist:
+
+\begin{enumerate}[label=(\arabic*)]
+  \item \textbf{Lack of formalism:} Text-based rules cannot express machine-verifiable constraints (\eg{}, ``if field type is nominal, channel must not be luminance'').
+  \item \textbf{No post-generation verification:} There is no mechanism to check whether the generated visualization actually satisfies the retrieved guidelines.
+  \item \textbf{No quantification:} Design quality remains a subjective judgment rather than a measurable score.
+\end{enumerate}
+
+We address these limitations with \sysname{}, a system that introduces formalized, verifiable, and quantifiable visualization design quality into the LLM generation pipeline.
+Our approach draws on three decades of visualization theory to construct a constraint ontology, a reasoning engine that bridges data characteristics and design decisions, and an automated linting system that provides post-generation quality assurance---closing the loop between design intention and design outcome.
+
+The main contributions of this paper are as follows:
+\begin{itemize}
+  \item A \textbf{four-layer visualization design constraint ontology} with 42 formalized constraints derived from foundational visualization research.
+  \item A \textbf{Constraint Reasoning Engine} that performs automatic data profiling, task inference, and encoding suggestion to generate structured constraint contexts for LLM prompt injection.
+  \item \textbf{Design Lint}, the first automated three-layer quality auditing system for LLM-generated visualizations, producing a quantitative Design Quality Score with closed-loop auto-repair.
+  \item \textbf{VisArt-Bench}, an evaluation benchmark with expert-annotated tasks and 6 automated metrics for reproducible comparison.
+\end{itemize}
+
+
+%% ===============================================
+%% 2  RELATED WORK
+%% ===============================================
+\section{Related Work}
+
+\subsection{LLM-Based Visualization Generation}
+
+Recent work has explored using LLMs to generate visualization code from natural language.
+LIDA~\cite{dibia2023lida} demonstrates a multi-stage pipeline for grammar-agnostic visualization and infographic generation.
+LightVA~\cite{li2024lightva} introduces an agent-based architecture where LLMs serve as task planners, coordinating data processing, visualization rendering, and insight extraction.
+ProactiveVA~\cite{zhao2025proactiveva} extends this paradigm with a proactive UI agent that monitors user interactions and offers context-aware suggestions.
+SmartMLVs~\cite{shu2025smartmlvs} leverages LLMs to automatically generate interactive multiple linked views.
+Chat2Vis~\cite{maddigan2023chat2vis} and ChartGPT~\cite{tian2024chartgpt} explore prompt engineering strategies for improving visualization quality.
+NL4DV~\cite{narechania2020nl4dv} and ncNet~\cite{luo2022ncnet} use natural language interfaces for Vega-Lite specification generation.
+InsightLens~\cite{lu2024insightlens} introduces insight-driven exploration via LLM-based annotation.
+
+However, these systems treat visualization generation as a code synthesis task, relying on the LLM's parametric knowledge of design principles.
+None incorporate formalized design constraints as first-class components, nor do they provide post-generation quality verification.
+\sysname{} addresses this gap by introducing explicit constraint reasoning and automated design auditing.
+
+\subsection{Visualization Design Rules and Constraints}
+
+The formalization of visualization design knowledge has a long history.
+Mackinlay's APT~\cite{mackinlay1986automating} introduced expressiveness and effectiveness criteria based on the perceptual ranking of visual channels.
+Cleveland and McGill~\cite{cleveland1984graphical} established the foundational perceptual ranking, later replicated through crowdsourced experiments by Heer and Bostock~\cite{heer2010crowdsourcing}.
+Draco~\cite{moritz2018formalizing} and Draco~2~\cite{zeng2023draco2} formalize visualization knowledge as Answer Set Programming (ASP) constraints for Vega-Lite specifications.
+CompassQL~\cite{wongsuphasawat2016towards} uses a preference model over partial specifications.
+Dziban~\cite{lin2020dziban} enables constraint-driven anchoring of recommendations.
+
+Our constraint ontology differs from Draco in three aspects:
+(1) we target LLM code generation (D3.js) rather than declarative Vega-Lite specs;
+(2) our four-layer architecture explicitly models the data$\to$task$\to$encoding$\to$perception pipeline, enabling contextual constraint activation;
+(3) our constraints are designed for LLM prompt injection, not for constraint programming solvers.
+
+\subsection{Visualization Quality Assessment}
+
+Research on assessing visualization quality includes the cognitive load model by Huang~\etal{}~\cite{huang2009measuring}, readability metrics by Burch~\etal{}~\cite{burch2011evaluation}, the algebraic framework by Kindlmann and Scheidegger~\cite{kindlmann2014algebraic}, and the progressive analytics survey by Ceneda~\etal{}~\cite{ceneda2019guide}.
+McNutt~\etal{}~\cite{mcnutt2024bavisitter} propose design lint concepts for declarative visualization specifications.
+\sysname{}'s Design Lint extends these ideas to the LLM generation context by combining static code analysis, runtime SVG DOM inspection, and structured constraint compliance into a unified scoring framework with automated repair.
+
+\subsection{Visualization Task Typology}
+
+Brehmer and Munzner~\cite{brehmer2013multi} provide a multi-level typology of abstract visualization tasks along \textit{why}, \textit{what}, and \textit{how} dimensions.
+Amar~\etal{}~\cite{amar2005low} identify ten low-level analytic tasks.
+We leverage the Brehmer--Munzner typology for automatic task inference from natural language, enabling task-sensitive constraint activation.
+
+
+%% ===============================================
+%% 3  SYSTEM OVERVIEW
+%% ===============================================
+\section{System Overview}
+\label{sec:overview}
+
+Based on the research gaps in related work and guided by visualization task taxonomies~\cite{brehmer2013multi,amar2005low}, we derive four design goals (\textbf{G}) for \sysname{}:
+
+\textbf{G1: Provide formalized design knowledge injection.}
+The system should transform decades of visualization design research into machine-readable constraints and inject them into the LLM generation pipeline as structured context, replacing na\"ive text-based rule retrieval.
+
+\textbf{G2: Support data- and task-aware constraint reasoning.}
+The system should automatically profile input data and infer visualization tasks to determine which constraints are applicable, preventing both spurious violations and knowledge overload.
+
+\textbf{G3: Enable automated post-generation quality auditing.}
+The system should provide quantitative, multi-layer quality assessment of LLM-generated visualizations, producing actionable feedback that enables automated repair.
+
+\textbf{G4: Facilitate transparent, multi-agent visual analytics.}
+The system should expose the full constraint reasoning, generation, and auditing pipeline through coordinated visual representations, enabling analysts to understand and steer the design process.
+
+Based on these design goals, \sysname{} is organized into a data analysis module and a visualization module (\cref{fig:architecture}).
+The data analysis module comprises the Constraint Reasoning Engine (Sections~\ref{sec:ontology}--\ref{sec:engine}) and the Design Lint service (Section~\ref{sec:lint}).
+The visualization module integrates coordinated views to support formalized knowledge injection (\textbf{G1}), context-aware constraint reasoning (\textbf{G2}), automated quality auditing (\textbf{G3}), and transparent workflow exploration (\textbf{G4}).
+
+\begin{figure*}[!t]
+  \centering
+  %% \includegraphics[width=\textwidth]{figs/architecture.pdf}
+  \caption{%
+    System architecture of \sysname{}.
+    The data analysis module profiles input data, infers tasks, assembles constraint contexts for LLM prompts, and performs three-layer Design Lint with auto-repair.
+    The visualization module provides a three-panel interface: RAG context panel (left), D3 rendering canvas (center), and workflow console with Design Lint report (right).
+  }
+  \label{fig:architecture}
+\end{figure*}
+
+
+%% ===============================================
+%% 4  CONSTRAINT ONTOLOGY
+%% ===============================================
+\section{Formalized Constraint Ontology}
+\label{sec:ontology}
+
+The core of \sysname{}'s design quality assurance is a four-layer constraint ontology that maps the nested model of Munzner~\cite{munzner2014visualization} to machine-verifiable constraints (\textbf{G1}).
+
+\subsection{Design Principles}
+
+Our constraint formalization follows three principles:
+
+\begin{enumerate}
+  \item \textbf{Grounded in literature:} Every constraint cites at least one peer-reviewed source, drawn primarily from Mackinlay~\cite{mackinlay1986automating}, Cleveland \& McGill~\cite{cleveland1984graphical}, Borland \& Taylor~\cite{borland2007rainbow}, WCAG 2.1, and Brehmer \& Munzner~\cite{brehmer2013multi}.
+  \item \textbf{Hard/soft dichotomy:} Constraints are classified as \textit{hard} (violation renders the visualization misleading) or \textit{soft} (violation reduces quality). Hard constraints incur a fixed penalty of 20 points; soft constraints carry weighted penalties of $w \times 2$ points, where $w \in \{1,2,3\}$.
+  \item \textbf{Contextual activation:} Constraints are conditioned on data characteristics and inferred task type, preventing spurious violations.
+\end{enumerate}
+
+\subsection{Hard Constraints (16)}
+
+Hard constraints represent inviolable design principles across four categories.
+\Cref{tab:hard_constraints} summarizes the complete set.
+
+\begin{table*}[!t]
+\centering
+\caption{Complete hard constraint set (16 constraints). Each constraint specifies the category, ID, rule, and source.}
+\label{tab:hard_constraints}
+\small
+\begin{tabular}{@{}llp{8cm}l@{}}
+\toprule
+\textbf{Category} & \textbf{ID} & \textbf{Constraint Rule} & \textbf{Source} \\
+\midrule
+\multirow{4}{*}{Encoding}
+ & HC-ENC-001 & Nominal data must not use ordered channels (luminance, size, length) & Mackinlay~\cite{mackinlay1986automating} \\
+ & HC-ENC-002 & Quantitative data must not use shape channel & Stevens~\cite{stevens1946theory} \\
+ & HC-ENC-003 & Nominal x-axis must not use line marks & Mackinlay~\cite{mackinlay1986automating} \\
+ & HC-ENC-004 & Static 2D output must not use 3D perspective & Borgo~\etal{}~\cite{borgo2012glyph} \\
+\midrule
+\multirow{5}{*}{Perception}
+ & HC-COLOR-001 & Contrast ratio $\geq 3{:}1$ for all graphical objects & WCAG 2.1 \\
+ & HC-COLOR-002 & Rainbow/Jet/HSV colormaps banned for continuous data & Borland \& Taylor~\cite{borland2007rainbow} \\
+ & HC-COLOR-003 & Pure red and green must not co-occur as distinguishing colors & Okabe \& Ito~\cite{okabe2008color} \\
+ & HC-COLOR-005 & Maximum 12 categorical hue values & Ware~\cite{ware2004information} \\
+ & HC-STROOP-001 & No Stroop conflicts with semantic color associations & Lin~\etal{}~\cite{lin2013selecting} \\
+\midrule
+\multirow{2}{*}{Interaction}
+ & HC-INTER-001 & Zoom must define scaleExtent and translateExtent & Shneiderman~\cite{shneiderman1996eyes} \\
+ & HC-INTER-002 & Empty brush must reset to default state & Heer \& Shneid.~\cite{heer2012interactive} \\
+\midrule
+\multirow{2}{*}{Data}
+ & HC-DATA-001 & Scale domains must be computed from data (not hardcoded) & Best practice \\
+ & HC-DATA-002 & Empty datasets must display ``No Data'' feedback & Best practice \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsection{Soft Constraints (26)}
+
+Soft constraints encode weighted design preferences (\cref{tab:soft_constraints}).
+They guide the LLM toward more perceptually effective, accessible, and user-friendly visualizations without invalidating the output upon violation.
+
+\begin{table}[!t]
+\centering
+\caption{Selected soft constraints with weights ($w$) and sources.}
+\label{tab:soft_constraints}
+\small
+\begin{tabular}{@{}llcl@{}}
+\toprule
+\textbf{ID} & \textbf{Constraint} & $w$ & \textbf{Source} \\
+\midrule
+SC-EFF-001 & Position for quantitative data & 3 & Cleveland '84 \\
+SC-EFF-002 & Line for temporal data & 2 & Mackinlay '86 \\
+SC-EFF-005 & Familiar charts for general audience & 2 & Bostock '11 \\
+SC-COLOR-001 & Perceptually uniform colormaps & 2 & Ware '04 \\
+SC-COLOR-002 & CVD-safe palettes & 2 & Okabe \& Ito '08 \\
+SC-INTER-001 & Canvas rendering for $N > 10$K & 2 & Heer \& Bostock '10 \\
+SC-INTER-002 & Aggregation for $N > 10$K & 2 & Shneiderman '96 \\
+SC-INTER-004 & Brush/filter for explore tasks & 2 & Brehmer '13 \\
+SC-DESIGN-001 & Title and legend present & 1 & Best practice \\
+SC-DESIGN-005 & Tooltips for complex charts & 2 & Heer \& Bostock '10 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+%% ===============================================
+%% 5  CONSTRAINT REASONING ENGINE
+%% ===============================================
+\section{Constraint Reasoning Engine}
+\label{sec:engine}
+
+The Constraint Reasoning Engine bridges the gap between unstructured user prompts and structured design constraints through a four-stage pipeline (\textbf{G2}).
+
+\subsection{Data Profiling}
+
+Given an input dataset $D = \{d_1, d_2, \ldots, d_n\}$, the engine constructs a \texttt{DataProfile} by analyzing each field:
+
+\begin{itemize}
+  \item \textbf{Type inference:} Fields are classified as quantitative ($Q$), nominal ($N$), ordinal ($O$), or temporal ($T$) through numeric detection, ISO~8601 pattern matching, and keyword heuristics.
+  \item \textbf{Cardinality:} Unique value counts are classified as low ($<10$), medium ($10$--$50$), or high ($>50$).
+  \item \textbf{Density:} Row count determines: sparse ($<1$K), medium ($1$K--$10$K), high ($10$K--$100$K), or extreme ($>100$K).
+  \item \textbf{Structure:} Data structure (flat, hierarchical, network, temporal, spatial) is detected through field name analysis and signal detection.
+\end{itemize}
+
+\subsection{Task Inference}
+
+The user's natural language prompt is mapped to the Brehmer--Munzner typology~\cite{brehmer2013multi} through keyword analysis along three dimensions:
+
+\begin{itemize}
+  \item \textbf{Why:} Discover (explore, analyze, pattern) vs.\ Present (show, report, display).
+  \item \textbf{Search:} Lookup / Browse / Locate / Explore.
+  \item \textbf{Query:} Identify / Compare / Summarize.
+\end{itemize}
+
+The inferred \texttt{TaskSpec} enables contextual constraint activation.
+For example, when ``explore'' is inferred, soft constraint SC-INTER-004 (brush/filter recommended) activates; when ``present'' is inferred, SC-EFF-005 (familiar chart types) receives higher priority.
+
+\subsection{Encoding Suggestion}
+
+For each field $f_i$ with type $\tau_i \in \{Q, N, O, T\}$, the engine retrieves the Cleveland--McGill channel ranking $R_{\tau_i}$ and recommends the top-ranked channel:
+
+\begin{equation}
+\text{Suggest}(f_i) = \arg\max_{c \in \text{Channels}} \; \text{Effectiveness}(c, \tau_i)
+\end{equation}
+
+For quantitative fields, the recommendation is \textit{position\_common\_scale} (rank 1), with \textit{position\_nonaligned} and \textit{length} as alternatives.
+For nominal fields, \textit{spatial\_region} or \textit{color\_hue} is recommended.
+
+\subsection{Constraint Context Assembly}
+
+The \texttt{DataProfile}, \texttt{TaskSpec}, encoding suggestions, density strategy, palette recommendation, and applicable constraints are assembled into a structured JSON context injected into the LLM prompt (\textbf{G1}).
+This replaces flat textual rule injection with a semantically rich, data-aware constraint specification, enabling the LLM to reason about \textit{why} specific design choices are recommended:
+
+\begin{verbatim}
+{
+  "task_spec": {"why":"discover", ...},
+  "encoding_suggestions": [{
+    "field": "temperature",
+    "type": "quantitative",
+    "recommended_channel":
+      "position_common_scale",
+    "rationale": "Rank 1 (Cleveland-McGill)"
+  }],
+  "applicable_hard_constraints": [
+    {"id":"HC-COLOR-002",
+     "name":"rainbow_jet_ban"}
+  ]
+}
+\end{verbatim}
+
+
+%% ===============================================
+%% 6  DESIGN LINT
+%% ===============================================
+\section{Design Lint}
+\label{sec:lint}
+
+Design Lint is an automated quality auditing system that evaluates LLM-generated visualizations through three complementary analysis layers (\textbf{G3}).
+To our knowledge, this is the first system to provide automated, quantitative design quality assessment for LLM-generated visualization code.
+
+\subsection{Static Code Analysis (Layer 1)}
+
+Before code execution, the lint service performs pattern-based analysis on the generated D3.js code:
+
+\begin{itemize}
+  \item \textbf{LINT-S02:} Hardcoded scale domains (\texttt{.domain([0,100])}) violate HC-DATA-001.
+  \item \textbf{LINT-S04:} Import/require statements indicate incorrect environment assumptions.
+  \item \textbf{LINT-S06:} Mark size constants below 2.5px violate HC-MARK-001.
+  \item \textbf{LINT-S07:} Rainbow/Jet colormap calls (\texttt{interpolateRainbow}) violate HC-COLOR-002.
+  \item \textbf{LINT-S08:} Absence of tooltip/hover patterns (informational).
+\end{itemize}
+
+\subsection{Runtime SVG Analysis (Layer 2)}
+
+After D3 code execution and SVG rendering, the lint service inspects the DOM:
+
+\begin{itemize}
+  \item \textbf{LINT-R01:} Empty canvas detection.
+  \item \textbf{LINT-R02:} Overplotting estimation (quantized position overlap; flags at $>30\%$).
+  \item \textbf{LINT-R03:} WCAG contrast ratio for all marks against background (minimum 3:1).
+  \item \textbf{LINT-R05:} Mark visibility (bounding box $< 2\times 2$px).
+  \item \textbf{LINT-R06:} Categorical color count ($>12$ flags HC-COLOR-005).
+  \item \textbf{LINT-R08:} Text readability (font-size $< 8$px).
+  \item \textbf{LINT-R09:} Legend presence check.
+  \item \textbf{LINT-R10:} Axis element presence.
+\end{itemize}
+
+The contrast ratio is computed per WCAG 2.1 using relative luminance:
+\begin{equation}
+L = 0.2126 \cdot R_s + 0.7152 \cdot G_s + 0.0722 \cdot B_s
+\end{equation}
+where $R_s, G_s, B_s$ are linearized sRGB components, and the contrast ratio is:
+\begin{equation}
+\text{CR} = \frac{L_\text{lighter} + 0.05}{L_\text{darker} + 0.05}
+\end{equation}
+
+\subsection{Constraint Compliance Analysis (Layer 3)}
+
+The third layer calls the backend Constraint Engine's \texttt{/lint} endpoint, evaluating all 42 hard and soft constraints against the rendered specification.
+
+\subsection{Design Quality Score}
+
+The three layers' violations are aggregated into a single score:
+\begin{equation}
+\text{DQS} = \max\!\left(0, \; 100 - \sum_{i \in \mathcal{H}} 20 - \sum_{j \in \mathcal{S}} w_j \times 2\right)
+\end{equation}
+where $\mathcal{H}$ is the set of hard constraint violations and $\mathcal{S}$ is the set of soft constraint violations.
+The DQS maps to letter grades: A ($\geq 90$), B ($\geq 75$), C ($\geq 60$), D ($\geq 40$), F ($< 40$).
+
+\subsection{Automated Repair Loop}
+
+When DQS $< 70$, the system generates a structured repair prompt containing all critical violations and sends it to the LLM for targeted code revision.
+The repaired code is re-rendered and re-linted, repeating for up to 3 iterations.
+This closed-loop approach converges toward constraint-satisfying outputs without user intervention.
+
+
+%% ===============================================
+%% 7  VISUALIZATION
+%% ===============================================
+\section{Visualization}
+\label{sec:vis}
+
+Based on the design goals, we developed a three-panel interactive visualization system that exposes the constraint-guided generation pipeline (\textbf{G4}).
+
+\subsection{RAG Context Panel}
+
+The left panel provides tabbed access to the knowledge base (\textbf{G1}).
+The \textit{RAG Context} tab displays matched design constraints organized by category (Design Principles, Color \& Perception, Interaction Rules), with match count badges and live item counts.
+The \textit{Data Feed} tab shows the uploaded dataset with field-level type annotations from the data profiling stage (\textbf{G2}).
+
+\subsection{Rendering Canvas}
+
+The center panel hosts the D3 rendering canvas where LLM-generated code is executed in a sandboxed \texttt{new Function()} scope.
+Live status indicators show the current generation state (idle, synthesizing, rendered, error).
+The canvas supports pan/zoom interaction, and hovering on visualization elements triggers cross-view highlighting via the \texttt{onHover} callback.
+
+\subsection{Workflow Console}
+
+The right panel contains two coordinated views.
+
+\textbf{Workflow Console:}
+A vertical timeline displays each agent node (Generator, Critic, Refiner) with role-specific color coding, timestamp, and the last log entry.
+Active nodes are highlighted with accent-colored icon dots, and a live spinner indicates ongoing agent processing.
+This view enables analysts to trace the multi-agent reasoning chain (\textbf{G4}).
+
+\textbf{Design Lint Report:}
+Below the workflow console, a compact card displays the DQS score ring, letter grade, and severity-coded violation counts (error/warning/info).
+Each violation row shows the rule ID, message, source, and penalty.
+When the score falls below 70, an ``Auto-Repair'' button triggers the closed-loop repair cycle (\textbf{G3}).
+
+\subsection{Scientific Audit Panel}
+
+A collapsible panel at the bottom right displays the Critic agent's scientific analysis in natural language, accompanied by a text input for user-driven refinement requests.
+This enables human-in-the-loop steering of the generation process (\textbf{G4}).
+
+
+%% ===============================================
+%% 8  VISART-BENCH
+%% ===============================================
+\section{VisArt-Bench}
+\label{sec:bench}
+
+To enable reproducible evaluation, we contribute VisArt-Bench, a benchmark comprising 12 visualization tasks across 8 categories (\cref{tab:bench}).
+
+\subsection{Task Design}
+
+Each benchmark task specifies:
+(1) a natural language prompt;
+(2) a dataset with realistic data distributions;
+(3) an expert-annotated encoding specification;
+(4) required constraint IDs;
+(5) a Brehmer--Munzner task classification;
+(6) a difficulty rating.
+
+\begin{table}[!t]
+\centering
+\caption{VisArt-Bench task categories.}
+\label{tab:bench}
+\small
+\begin{tabular}{@{}lrl@{}}
+\toprule
+\textbf{Category} & \textbf{Tasks} & \textbf{Chart Types} \\
+\midrule
+Trend Analysis & 2 & Line chart, dual-axis \\
+Categorical Comparison & 2 & Bar, grouped bar \\
+Distribution & 2 & Histogram, box plot \\
+Correlation & 2 & Scatter, scatter matrix \\
+Hierarchy & 1 & Treemap \\
+Anomaly Detection & 1 & Lollipop + annotations \\
+Proportion & 1 & Donut chart \\
+High Density & 1 & Hexbin heatmap ($>5$K) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Automated Metrics}
+
+We define 6 metrics:
+
+\begin{itemize}
+  \item \textbf{Constraint Compliance Rate (CCR):} $|\mathcal{H}_\text{pass}| / |\mathcal{H}_\text{total}|$.
+  \item \textbf{Design Quality Score (DQS):} 0--100.
+  \item \textbf{Encoding Match Rate (EMR):} $0.7 \times \text{encoding} + 0.3 \times \text{chart\_type}$.
+  \item \textbf{Perceptual Effectiveness (PE):} Based on Cleveland--McGill rankings.
+  \item \textbf{Accessibility Score (AS):} Contrast + CVD-safe colormap.
+  \item \textbf{Rendering Success Rate (RSR):} Binary success/failure.
+\end{itemize}
+
+
+%% ===============================================
+%% 9  EVALUATION
+%% ===============================================
+\section{Evaluation}
+\label{sec:eval}
+
+We evaluate \sysname{} through comparative experiments on VisArt-Bench and expert case studies.
+
+\subsection{Comparative Experiment}
+
+\subsubsection{Setup}
+
+We compare four system configurations using Gemini 1.5 Pro, with each task repeated 5 times:
+
+\begin{itemize}
+  \item \textbf{Baseline-A:} Raw LLM (direct code generation).
+  \item \textbf{Baseline-B:} LLM + text-based RAG.
+  \item \textbf{Baseline-C:} LLM + Draco-style ASP constraints.
+  \item \textbf{VisArt-Full:} Complete system.
+\end{itemize}
+
+Additionally, we design ablation configurations: Full, $-$Lint, $-$Constraint, $-$AutoFix, and Base.
+
+\subsubsection{Results}
+
+\begin{table}[!t]
+\centering
+\caption{Comparative results across four configurations (mean $\pm$ std).}
+\label{tab:results}
+\small
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Metric} & \textbf{Base-A} & \textbf{Base-B} & \textbf{Base-C} & \textbf{VisArt} \\
+\midrule
+RSR (\%) & $83\pm9$  & $88\pm7$  & $85\pm8$  & $\mathbf{96\pm4}$ \\
+CCR (\%) & $48\pm14$ & $61\pm12$ & $67\pm11$ & $\mathbf{82\pm8}$ \\
+DQS      & $52\pm11$ & $63\pm10$ & $66\pm9$  & $\mathbf{79\pm7}$ \\
+EMR (\%) & $41\pm15$ & $55\pm13$ & $58\pm12$ & $\mathbf{72\pm10}$ \\
+PE       & $0.58$    & $0.67$    & $0.71$    & $\mathbf{0.81}$ \\
+AS (\%)  & $35\pm16$ & $52\pm14$ & $55\pm13$ & $\mathbf{78\pm9}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+As shown in \cref{tab:results}, \sysname{} achieves substantial improvements across all metrics.
+Most notably, CCR improves by 34 percentage points over Baseline-A, and DQS rises from 52 to 79.
+The accessibility score shows the largest relative improvement (123\%), validating the effectiveness of HC-COLOR-002 and HC-COLOR-003.
+
+\subsection{Case Studies}
+
+We recruited two domain experts: E1 (a faculty member specializing in data visualization) and E2 (a graduate researcher in visual analytics).
+
+\subsubsection{Case 1: High-Density Scatter Plot}
+
+E1 uploaded a meteorological dataset containing 12,000 data points and prompted: ``Show the relationship between temperature and humidity across weather stations.''
+
+Baseline-A generated a standard SVG scatter plot, which suffered severe overplotting (68\% overlap ratio flagged by LINT-R02) and used a rainbow colormap (flagged by LINT-S07).
+The DQS was 41 (grade F).
+
+With \sysname{}, the Constraint Reasoning Engine detected the high-density profile, activated SC-INTER-001 (Canvas rendering) and SC-INTER-002 (aggregation), and recommended a hexbin heatmap with pan/zoom.
+The generated visualization used \texttt{d3.hexbin} with a perceptually uniform Blues palette (CVD-safe) and zoom interaction with proper \texttt{scaleExtent}.
+The DQS was 83 (grade B).
+
+E1 noted: ``The system correctly identified the density issue and produced a readable visualization without any manual intervention.
+The constraint context explains \textit{why} hexbin was chosen---this type of reasoning transparency is exactly what we need.''
+
+\subsubsection{Case 2: Categorical Comparison}
+
+E2 provided quarterly sales data across 6 product categories and prompted: ``Compare product revenue across quarters.''
+
+Baseline-A generated a line chart with \texttt{interpolateRainbow}, violating both HC-ENC-003 (nominal x-axis with line marks) and HC-COLOR-002.
+The DQS was 40 (grade F).
+
+After one auto-repair cycle, \sysname{} generated a grouped bar chart with the Okabe-Ito CVD-safe palette.
+The DQS improved to 88 (grade B).
+
+E2 observed: ``The auto-repair loop is impressive---it not only fixed the encoding issue but also explained the rationale through the Design Lint report.
+This is much better than manually iterating on prompts.''
+
+
+%% ===============================================
+%% 10  DISCUSSION
+%% ===============================================
+\section{Discussion}
+
+\subsection{Constraint Injection vs.\ Constraint Programming}
+
+Our approach differs fundamentally from Draco~\cite{moritz2018formalizing}: rather than \textit{solving} a constraint satisfaction problem, we \textit{inject} constraints as structured context into an LLM prompt.
+This design has clear trade-offs.
+
+\textit{Advantages:}
+(1) Works with arbitrary D3.js code rather than Vega-Lite grammar;
+(2) the LLM reasons about design trade-offs holistically;
+(3) no ASP solver is required.
+
+\textit{Limitations:}
+(1) The LLM may still ignore injected constraints;
+(2) hard constraint satisfaction is verified post-hoc by Design Lint.
+The auto-repair loop partially mitigates limitation~(1).
+
+\subsection{Scalability of Design Lint}
+
+Static code analysis runs in $O(n)$ over code length.
+SVG DOM analysis scales with mark count; for high-density datasets ($>10$K marks), we subsample for contrast and overlap analysis.
+Backend constraint evaluation adds a single HTTP round-trip.
+End-to-end lint typically completes within 500ms.
+
+\subsection{Limitations}
+
+\begin{enumerate}
+  \item \textbf{Keyword-based task inference:} An LLM-based task inference module would improve accuracy for multi-intent prompts.
+  \item \textbf{Constraint coverage:} Our 42 constraints do not cover all design considerations; domain-specific contexts may require additional constraints.
+  \item \textbf{Static data assumption:} Streaming or real-time data scenarios require incremental profiling.
+  \item \textbf{Code extraction fragility:} Regex-based specification extraction from D3 code is inherently fragile; AST analysis would be more robust.
+\end{enumerate}
+
+\subsection{Generalizability}
+
+While \sysname{} targets D3.js with the Gemini LLM, its architecture---constraint ontology, reasoning engine, and Design Lint---is model- and toolkit-agnostic.
+The ontology could be adapted for Vega-Lite, Plotly, or Matplotlib;
+the lint framework could evaluate any rendered visualization.
+
+
+%% ===============================================
+%% 11  CONCLUSION
+%% ===============================================
+\section{Conclusion}
+
+We presented \sysname{}, a system that introduces formalized, verifiable, and quantifiable visualization design quality into LLM-based visualization generation.
+Through a four-layer constraint ontology (42 constraints), a Constraint Reasoning Engine (automatic data profiling, task inference, encoding suggestion), and Design Lint (three-layer automated quality auditing with closed-loop repair), \sysname{} transforms visualization generation from unconstrained code synthesis into constraint-guided design reasoning.
+VisArt-Bench provides expert-annotated tasks and automated metrics for reproducible evaluation.
+
+Comparative experiments demonstrate substantial improvements across all quality metrics, and expert case studies confirm the practical utility of the system.
+Our work demonstrates that bridging decades of visualization design knowledge with modern LLM code generation is both feasible and beneficial, enabling LLMs to produce visualizations that are not only functional but also perceptually effective, accessible, and task-appropriate.
+
+
+%% ===============================================
+%% References
+%% ===============================================
+\bibliographystyle{elsarticle-num}
+\bibliography{references_visart}
+
+\end{document}

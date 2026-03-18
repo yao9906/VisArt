@@ -1,0 +1,313 @@
+% !TEX program = pdflatex
+\documentclass[final,5p,times,twocolumn]{elsarticle}
+\usepackage{amssymb,amsmath,amsfonts,mathptmx}
+\usepackage{graphicx}
+\graphicspath{{figs/}{figures/}{images/}{./}}
+\usepackage{booktabs,multirow,xcolor,enumitem}
+\usepackage{algorithm,algorithmic}
+\usepackage{lineno}
+\usepackage[hidelinks]{hyperref}
+\usepackage[capitalise]{cleveref}
+\journal{Visual Informatics}
+
+\newcommand{\sysname}{\textsc{VisArt}}
+\newcommand{\eg}{e.g.}
+\newcommand{\ie}{i.e.}
+\newcommand{\etal}{\textit{et al.}}
+
+\begin{document}
+\begin{frontmatter}
+\title{VisArt: Constraint-Guided Visualization Generation with Automated Design Linting for LLM-Based Visual Analytics}
+\author{Anonymous Authors}
+
+\begin{abstract}
+Large Language Models (LLMs) have demonstrated remarkable capability in generating visualization code from natural language, yet the quality of their output frequently violates established visualization design principles---producing misleading visual encodings, perceptually ineffective color mappings, and interaction patterns that impede analytical workflows. We present \sysname{}, a visual analytics system that transforms LLM-based visualization generation from unconstrained code synthesis into \textit{constraint-guided design reasoning}. Guided by four design goals derived from a systematic review of LLM-based visualization research, \sysname{} introduces three tightly integrated components. First, a \textbf{four-layer visualization design constraint ontology} comprising 42 formalized constraints (16 hard, 26 soft) grounded in foundational visualization research, organized across data characterization, task inference, encoding effectiveness, and perception/interaction layers. Second, a \textbf{Constraint Reasoning Engine} that automatically profiles input data, infers visualization tasks using the Brehmer--Munzner typology, ranks encoding channels via the Cleveland--McGill hierarchy, and assembles structured constraint contexts for LLM prompt injection. Third, \textbf{Design Lint}, the first automated three-layer quality auditing system for LLM-generated visualizations---combining static code analysis, runtime SVG DOM inspection, and constraint compliance checking---to produce a quantitative Design Quality Score (DQS) with closed-loop auto-repair. We further contribute \textbf{VisArt-Bench}, an evaluation benchmark comprising 12 tasks across 8 visualization categories with 6 automated metrics. Comparative experiments and expert case studies demonstrate that constraint-guided generation significantly improves design quality over unconstrained baselines.
+\end{abstract}
+
+\begin{keyword}
+Visual Analytics \sep Visualization Generation \sep Large Language Models \sep Design Constraints \sep Design Linting
+\end{keyword}
+\end{frontmatter}
+
+\linenumbers
+
+%%=============================================
+%% 1. INTRODUCTION
+%%=============================================
+\section{Introduction}
+\label{sec:intro}
+
+The emergence of Large Language Models as tools for generating code---including visualization specifications and D3.js programs---has opened exciting possibilities for democratizing data visualization~\cite{dibia2023lida,li2024lightva,zhao2025proactiveva}. Given only a natural language prompt such as ``Show the trend of monthly temperatures,'' an LLM can produce executable visualization code in seconds. Recent agent-based systems such as LightVA~\cite{li2024lightva} and ProactiveVA~\cite{zhao2025proactiveva} further demonstrate that LLM agents can plan and execute complex visual analytics pipelines, coordinating data processing, chart generation, and insight extraction with minimal user effort. SmartMLVs~\cite{shu2025smartmlvs} extends this paradigm to automatic generation of interactive multiple linked views, signaling the broad potential of LLMs in the visualization ecosystem.
+
+However, this remarkable code-synthesis capability masks a critical, under-examined limitation: \textit{LLMs generate visualizations without systematic adherence to established visualization design principles.} Consider a common scenario: when asked to visualize categorical sales data, an LLM might produce a line chart---implying false continuity between discrete categories---use a rainbow colormap---creating perceptual artifacts and failing color-blind users~\cite{borland2007rainbow}---or encode quantitative values using shape---a channel incapable of conveying magnitude~\cite{stevens1946theory}. Each of these decisions violates well-established design guidelines from decades of visualization research~\cite{cleveland1984graphical,mackinlay1986automating,munzner2014visualization}, yet the violations go undetected because current LLM-based systems lack formal mechanisms for design quality assurance.
+
+The consequences extend far beyond aesthetics and have real implications for analytical effectiveness. Borland and Taylor~\cite{borland2007rainbow} demonstrated that rainbow colormaps create false perceptual boundaries through non-monotonic luminance variation, leading users to perceive discrete clusters in continuous data. Mackinlay's expressiveness principle~\cite{mackinlay1986automating} establishes that encoding nominal data with ordered channels (luminance, size) implies an ordering that does not exist, potentially leading users to draw incorrect conclusions. Cleveland and McGill~\cite{cleveland1984graphical} showed through controlled experiments that human perceptual accuracy varies dramatically across visual channels, with position on a common scale being 2--3$\times$ more accurate than area or color luminance for quantitative comparisons---a finding replicated at scale through crowdsourcing by Heer and Bostock~\cite{heer2010crowdsourcing}.
+
+Existing approaches to improving LLM-generated visualizations have focused primarily on retrieval-augmented generation (RAG), where relevant design ``rules'' are retrieved via keyword matching and injected into LLM prompts as unstructured text~\cite{li2024lightva,lu2024insightlens}. While this approach can surface relevant guidelines, it suffers from three fundamental limitations:
+\begin{enumerate}[label=(\arabic*)]
+  \item \textbf{Lack of formalism:} Text-based rules cannot express structured, machine-verifiable constraints (\eg{}, ``if field type is nominal, then channel must not be luminance''). The LLM receives design knowledge as prose rather than actionable logical conditions.
+  \item \textbf{No post-generation verification:} There is no mechanism to check whether the generated visualization actually satisfies the retrieved guidelines. Once the code is produced, design quality relies entirely on the LLM's parametric knowledge.
+  \item \textbf{No quantification:} Design quality remains a subjective judgment rather than a measurable score, preventing systematic comparison of generation approaches and impeding the development of automated improvement cycles.
+\end{enumerate}
+
+We address these limitations with \sysname{}, a system that introduces formalized, verifiable, and quantifiable visualization design quality into the LLM generation pipeline. Our approach draws on three decades of visualization theory to construct a constraint ontology, a reasoning engine that bridges data characteristics and design decisions, and an automated linting system that provides post-generation quality assurance---closing the loop between design intention and design outcome.
+
+\paragraph{Contributions.} This paper makes the following contributions:
+\begin{itemize}
+  \item A \textbf{four-layer visualization design constraint ontology} with 42 formalized constraints (16 hard, 26 soft) derived from foundational visualization research, organized as a machine-readable knowledge base with explicit conditions, rationale, and literature provenance.
+  \item A \textbf{Constraint Reasoning Engine} that performs automatic data profiling, task inference using the Brehmer--Munzner typology~\cite{brehmer2013multi}, and encoding effectiveness ranking using the Cleveland--McGill hierarchy~\cite{cleveland1984graphical}, assembling structured constraint contexts for LLM prompt injection.
+  \item \textbf{Design Lint}, the first automated three-layer quality auditing system for LLM-generated visualizations, combining static code analysis~\cite{mcnutt2018vislint}, runtime SVG DOM inspection (WCAG 2.1~\cite{wcag21}), and constraint compliance checking~\cite{chen2022vizlinter} to produce a quantitative Design Quality Score (DQS) with closed-loop auto-repair.
+  \item \textbf{VisArt-Bench}, an evaluation benchmark with 12 expert-annotated visualization tasks and 6 automated metrics for reproducible comparison.
+\end{itemize}
+
+
+%%=============================================
+%% 2. RELATED WORK
+%%=============================================
+\section{Related Work}
+
+\subsection{LLM-Based Visualization Generation}
+
+Recent work has explored using LLMs to generate visualization code from natural language with increasing sophistication. LIDA~\cite{dibia2023lida} demonstrates a multi-stage pipeline for grammar-agnostic visualization and infographic generation, decomposing the process into goal exploration, specification, and code synthesis. LightVA~\cite{li2024lightva} introduces an agent-based architecture where LLMs serve as task planners, coordinating a visual analytics pipeline comprising data processing, visualization rendering, and insight extraction. ProactiveVA~\cite{zhao2025proactiveva} extends this paradigm with a proactive UI agent that monitors user interactions and offers context-aware suggestions without explicit user requests. SmartMLVs~\cite{shu2025smartmlvs} addresses the challenge of generating interactive multiple linked views, leveraging LLMs to decompose complex analytical queries into coordinated visual representations. Chat2Vis~\cite{maddigan2023chat2vis} and ChartGPT~\cite{tian2024chartgpt} explore prompt engineering strategies for improving visualization quality across different LLM backends. NL4DV~\cite{narechania2020nl4dv} and ncNet~\cite{luo2022ncnet} use natural language interfaces for Vega-Lite specification generation via analytic specification inference and neural machine translation, respectively. InsightLens~\cite{lu2024insightlens} introduces insight-driven exploration via LLM-based annotation of conversational analytics contexts.
+
+These systems collectively demonstrate the feasibility of LLM-based visualization, yet they treat it fundamentally as a \textit{code synthesis} task, relying on the LLM's parametric knowledge of design principles. None incorporate formalized design constraints as first-class components of the generation pipeline, nor do they provide post-generation quality verification. \sysname{} addresses this gap by introducing explicit constraint reasoning and automated design auditing into the generation loop.
+
+\subsection{Visualization Design Rules and Constraints}
+
+The formalization of visualization design knowledge has a long history. Mackinlay's APT~\cite{mackinlay1986automating} introduced expressiveness and effectiveness criteria based on the perceptual ranking of visual channels, establishing that the choice of visual encoding should respect the data type's scale properties (Stevens' levels~\cite{stevens1946theory}). Cleveland and McGill~\cite{cleveland1984graphical} established the foundational perceptual ranking of graphical elements through controlled experiments, later replicated and extended through crowdsourced experiments by Heer and Bostock~\cite{heer2010crowdsourcing}, confirming that position judgments are systematically more accurate than angle, area, or color judgments.
+
+Draco~\cite{moritz2018formalizing} and its successor Draco~2~\cite{zeng2023draco2} represent the most systematic effort to formalize visualization knowledge, encoding design rules as Answer Set Programming (ASP) constraints that operate over Vega-Lite specifications. Given a partial specification, Draco's solver generates a complete, constraint-satisfying visualization. CompassQL~\cite{wongsuphasawat2016towards} uses a preference model over partial specifications to recommend and rank alternative visualizations. Dziban~\cite{lin2020dziban} enables constraint-driven anchoring of chart recommendations, balancing agency and automation.
+
+Our constraint ontology differs from Draco in three fundamental aspects. First, we target LLM code generation (D3.js) rather than declarative Vega-Lite specifications; D3's imperative nature supports richer interactions but makes constraint satisfaction harder to verify. Second, our four-layer architecture (data$\to$task$\to$encoding$\to$perception) explicitly models the analytical pipeline, enabling contextual constraint activation---constraints fire only when their preconditions match the current data and task context. Third, our constraints are designed for \textit{prompt injection} rather than constraint programming: they provide the LLM with structured reasoning context rather than being solved by an ASP solver.
+
+\subsection{Visualization Linting and Quality Assessment}
+
+The concept of applying software engineering linting to visualization was first introduced by McNutt and Kindlmann~\cite{mcnutt2018vislint}, who proposed ``vis lint'' as a programmatic evaluation model providing unambiguous, rule-based feedback during chart creation. Their prototype \texttt{vislint\_mpl} demonstrated feasibility for Matplotlib charts. VizLinter~\cite{chen2022vizlinter} extends this concept with a linter-fixer framework for Vega-Lite, defining 13 rules covering encoding legitimacy, mark-type compatibility, and visual channel appropriateness, with an automated fixer that corrects detected violations. GeoLinter~\cite{lei2024geolinter} specializes linting for choropleth maps, deriving rules from cartographic literature to evaluate classification methods, color scheme selection, and projection choices.
+
+Beyond linting, visualization quality has been assessed through cognitive load models~\cite{huang2009measuring}, readability metrics for graph visualization~\cite{burch2011evaluation}, and the algebraic visualization design framework by Kindlmann and Scheidegger~\cite{kindlmann2014algebraic}, which formalizes design errors as violations of algebraic properties (representation invariance, unambiguous data depiction). Ceneda~\etal{}~\cite{ceneda2019guide} survey progressive visual analytics guidance systems. Marriott~\etal{}~\cite{marriott2021inclusive} call for systematic application of accessibility standards (WCAG) in visualization design.
+
+\sysname{}'s Design Lint extends this lineage to the LLM generation context through three innovations: (1) combining static code analysis, runtime SVG DOM inspection, and structured constraint compliance into a unified scoring framework; (2) operating on imperative D3.js code rather than declarative specifications; and (3) enabling closed-loop auto-repair through structured violation feedback to the LLM.
+
+\subsection{Visualization Task Typology}
+
+Brehmer and Munzner~\cite{brehmer2013multi} provide a comprehensive multi-level typology of abstract visualization tasks, decomposing user intent along three dimensions: \textit{why} (motivation: discover vs.\ present), \textit{what} (targets: data attributes, trends, outliers), and \textit{how} (actions: encode, manipulate, introduce). Amar~\etal{}~\cite{amar2005low} identify ten low-level analytic tasks (retrieve value, filter, compute derived value, find extremum, sort, determine range, characterize distribution, find anomalies, cluster, correlate). Shneiderman~\cite{shneiderman1996eyes} proposes the Visual Information Seeking Mantra: ``overview first, zoom and filter, then details-on-demand.'' We leverage the Brehmer--Munzner typology for automatic task inference from natural language, enabling task-sensitive constraint activation---for example, activating brush/filter constraints only when an ``explore'' task is inferred, or prioritizing familiar chart types when a ``present'' motivation is detected.
+
+
+%%=============================================
+%% 3. SYSTEM OVERVIEW
+%%=============================================
+\section{System Overview}
+\label{sec:overview}
+
+Based on the research gaps identified in related work and guided by visualization task taxonomies~\cite{brehmer2013multi,amar2005low}, we derive four design goals (\textbf{G}) for \sysname{}:
+
+\textbf{G1: Provide formalized design knowledge injection.} The system should transform decades of visualization design research into machine-readable, structured constraints and inject them into the LLM generation pipeline as semantically rich context, replacing na\"ive text-based rule retrieval. Each constraint must include its activation condition, formal rule, rationale, and original literature source.
+
+\textbf{G2: Support data- and task-aware constraint reasoning.} The system should automatically profile input data (field types, cardinality, density, structure) and infer visualization tasks (Brehmer--Munzner typology) to determine which constraints are applicable in the current analytical context. This prevents both spurious constraint activation (checking temporal constraints on non-temporal data) and knowledge overload (injecting all 42 constraints regardless of relevance).
+
+\textbf{G3: Enable automated, quantitative post-generation quality auditing.} The system should provide multi-layer quality assessment of LLM-generated visualizations, combining static code analysis, runtime rendering inspection, and constraint compliance checking into a single quantitative score. The audit must produce actionable violation reports that can drive automated iterative repair without user intervention.
+
+\textbf{G4: Facilitate transparent, multi-agent visual analytics.} The system should expose the full constraint reasoning, generation, critique, and auditing pipeline through coordinated visual representations, enabling analysts to understand \textit{why} specific design decisions were made and to steer the generation process through human-in-the-loop feedback.
+
+\Cref{fig:architecture} illustrates the system architecture.
+
+\begin{figure*}[!t]
+  \centering
+  %% \includegraphics[width=\textwidth]{figs/architecture.pdf}
+  \caption{System architecture of \sysname{}. The pipeline operates in five stages: (1)~Data Profiling characterizes field types, cardinality, and density; (2)~Task Inference maps the user's prompt to the Brehmer--Munzner typology; (3)~Constrained Generation assembles encoding suggestions, density strategies, and applicable constraints into a structured context injected alongside knowledge graph-retrieved design knowledge; (4)~Rendering \& Lint executes the code in a sandboxed environment and performs three-layer Design Lint analysis; (5)~Auto-Repair iteratively corrects violations when DQS\,$<$\,70.}
+  \label{fig:architecture}
+\end{figure*}
+
+\subsection{Knowledge Organization}
+\label{sec:graphrag}
+
+A central challenge in injecting design knowledge into LLM prompts is organizing heterogeneous research findings---spanning perceptual psychology, graphic design, accessibility standards, and interaction design---into a coherent, retrievable structure. \sysname{} addresses this through a graph-structured knowledge base $\mathcal{G} = (\mathcal{V}, \mathcal{E})$ that organizes design knowledge into three thematically coherent subsystems:
+
+The \textbf{Constraint Subsystem} encodes the formal design rules discussed in Section~\ref{sec:ontology}---16 hard constraints and 26 soft constraints, each grounded in specific literature sources.
+
+The \textbf{Color Subsystem} captures three complementary aspects of color design: curated palettes with color vision deficiency (CVD) safety annotations~\cite{okabe2008color}, perception rules governing colormap selection and discriminability~\cite{ware2004information,borland2007rainbow}, and semantic color associations for domain-aware mapping~\cite{lin2013selecting}. The integration of semantic associations addresses a subtle but important design concern: Lin~\etal{}~\cite{lin2013selecting} showed that using semantically incongruent colors (\eg{}, coloring ``strawberry'' in blue) triggers Stroop interference, increasing cognitive load during visual analysis.
+
+The \textbf{Interaction Subsystem} encodes density-adaptive rendering strategies~\cite{shneiderman1996eyes}, multi-view coordination patterns, and semantic zoom specifications. This subsystem bridges the data profiling stage and the interaction constraint layer: when the data density exceeds a threshold, the system activates interaction-specific constraints that recommend aggregation, alternative rendering, or progressive loading.
+
+Given a user query, the system performs embedding-based similarity retrieval to identify relevant knowledge nodes, and then traverses the graph to surface related design techniques. The retrieved context is augmented with the Constraint Reasoning Engine's structured output (Section~\ref{sec:engine}) before injection into the LLM prompt.
+
+\subsection{Multi-Agent Architecture}
+
+The generation pipeline separates three concerns that are typically conflated in single-prompt LLM systems:
+
+\textbf{Design Critique} evaluates the appropriateness of the current visualization approach relative to the retrieved design knowledge and constraint context. The critic agent reasons about whether the chosen chart type, encoding channels, and interaction mechanisms are consistent with both the data characteristics and the inferred analytical task. Importantly, the critique is structured to cite specific design constraints and knowledge sources, creating an auditable reasoning chain (\textbf{G4}).
+
+\textbf{Code Synthesis} produces D3.js visualization code informed by the combined critique, knowledge context, and structured constraint recommendations.
+
+\textbf{Iterative Refinement} accepts two types of improvement signals: user-provided natural language feedback, and machine-generated Design Lint violation reports (Section~\ref{sec:lint}). The refiner preserves the core design concept while targeting specific quality deficiencies.
+
+This separation ensures that each stage can be independently inspected by the analyst, supporting the transparency goal (\textbf{G4}) while enabling the closed-loop auto-repair mechanism described in Section~\ref{sec:lint}.
+
+
+%%=============================================
+%% 4. CONSTRAINT ONTOLOGY
+%%=============================================
+\section{Formalized Constraint Ontology}
+\label{sec:ontology}
+
+The core of \sysname{}'s design quality assurance is a four-layer constraint ontology that maps the nested model of Munzner~\cite{munzner2014visualization} to machine-verifiable constraints (\textbf{G1}). Munzner's nested model posits four cascading levels of visualization design---domain characterization, data/task abstraction, encoding/interaction design, and algorithm selection---where errors at higher levels propagate downward and cannot be corrected at lower levels. Our ontology formalizes design principles at each level, creating a structured framework for both constraint injection and post-generation verification.
+
+\subsection{Formalization Principles}
+
+Three principles guide our constraint design:
+
+\begin{enumerate}
+  \item \textbf{Literature grounding.} Every constraint cites at least one peer-reviewed source. This ensures that the system's design judgments are traceable to established research rather than arbitrary heuristics---a distinction critical for building trust with expert users. Primary sources span Mackinlay~\cite{mackinlay1986automating} (expressiveness and effectiveness), Cleveland \& McGill~\cite{cleveland1984graphical} (perceptual ranking), Borland \& Taylor~\cite{borland2007rainbow} (colormap perception), WCAG 2.1~\cite{wcag21} (accessibility), Okabe \& Ito~\cite{okabe2008color} (CVD safety), Ware~\cite{ware2004information} (visual perception limits), and Brehmer \& Munzner~\cite{brehmer2013multi} (task typology).
+
+  \item \textbf{Hard/soft dichotomy.} Following Draco's~\cite{moritz2018formalizing} precedent, constraints are classified by severity. \textit{Hard constraints} represent inviolable principles whose violation renders the visualization misleading, inaccessible, or functionally broken---for example, using a rainbow colormap for continuous data, which creates false perceptual boundaries~\cite{borland2007rainbow}. \textit{Soft constraints} encode design preferences that improve quality but whose violation does not invalidate the visualization---for example, recommending tooltips for complex multi-variable charts. This dichotomy is essential for the scoring system (Section~\ref{sec:lint}): hard violations incur substantial penalties, while soft violations carry weighted, proportional deductions.
+
+  \item \textbf{Contextual activation.} Constraints include explicit preconditions that specify when they apply, preventing spurious violations. For example, the constraint prohibiting line marks on nominal x-axes (HC-ENC-003) activates only when the data profiler detects a nominal field on the x-axis; the constraint recommending brush/filter interactions (SC-INTER-004) activates only when the task inference suggests an exploratory analytical intent. This contextual filtering is critical for avoiding the ``constraint overload'' problem, where injecting all 42 constraints regardless of relevance diminishes the LLM's ability to reason about the most important design decisions.
+\end{enumerate}
+
+\subsection{Hard Constraints}
+
+Our ontology defines 16~hard constraints organized across four layers of Munzner's nested model. \Cref{tab:hard} provides the complete specification.
+
+The \textbf{encoding layer} (4~constraints) enforces Mackinlay's~\cite{mackinlay1986automating} expressiveness principle---that visual channels must match the data type's scale properties. Nominal data must not be encoded with ordered channels (luminance, size) that would imply a false ranking; quantitative data must not use shape, which conveys no magnitude information~\cite{stevens1946theory}; line marks must not connect nominal categories, as lines imply continuity and ordering that do not exist in nominal data.
+
+The \textbf{perception layer} (6~constraints) addresses color design and accessibility. These constraints encode the WCAG 2.1 contrast ratio standard~\cite{wcag21}, Borland and Taylor's~\cite{borland2007rainbow} findings on rainbow colormaps, Okabe and Ito's~\cite{okabe2008color} CVD-safe design principles, Ware's~\cite{ware2004information} categorical color discriminability limits, and Brewer's~\cite{borland2007rainbow} guidance on diverging colormap semantics.
+
+The \textbf{interaction layer} (2~constraints) enforces Shneiderman's~\cite{shneiderman1996eyes} interaction design principles: zoom interactions must have bounded extents to prevent disorientation, and empty brush selections must reset all views to their default state to prevent users from becoming trapped in null-filtered views~\cite{heer2012interactive}.
+
+The \textbf{data integrity layer} (4~constraints) ensures that the visualization faithfully represents the data: marks must be large enough to be perceptible~\cite{ware2004information}, scale domains must be computed from the data rather than hardcoded~\cite{kindlmann2014algebraic}, empty datasets require explicit feedback rather than blank canvases, and semantic color assignments must avoid Stroop interference~\cite{lin2013selecting}.
+
+\begin{table*}[!t]
+\centering
+\caption{Hard constraint specification (16 constraints). Each entry specifies the activation condition, formal rule, design rationale, and literature source. Hard constraints represent inviolable design principles.}
+\label{tab:hard}
+\small
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{@{}l l p{3.8cm} p{4.2cm} p{3cm} l@{}}
+\toprule
+\textbf{Layer} & \textbf{ID} & \textbf{Condition} & \textbf{Rule} & \textbf{Rationale} & \textbf{Source} \\
+\midrule
+\multirow{4}{*}{\rotatebox{90}{Encoding}}
+ & HC-ENC-001 & field\_type = nominal & Channel $\notin$ \{luminance, size, length\} & Ordered channels imply false ranking & Mackinlay~'86 \\
+ & HC-ENC-002 & field\_type = quantitative & Channel $\neq$ shape & Shape has no magnitude semantics & Stevens~'46 \\
+ & HC-ENC-003 & field\_type = nominal, axis = x & Mark $\neq$ line & Lines imply continuity & Mackinlay~'86 \\
+ & HC-ENC-004 & output = static\_2d & No 3D perspective & Occlusion/foreshortening errors & Borgo~'12 \\
+\midrule
+\multirow{6}{*}{\rotatebox{90}{Perception}}
+ & HC-COLOR-001 & graphical object & Contrast ratio $\geq 3{:}1$ & Low-vision accessibility & WCAG~2.1 \\
+ & HC-COLOR-002 & continuous + color encoding & Colormap $\notin$ \{rainbow, jet, hsv\} & Non-monotonic luminance & Borland~'07 \\
+ & HC-COLOR-003 & categorical distinction & No pure red + green pair & CVD indistinguishable & Okabe~'08 \\
+ & HC-COLOR-004 & color\_hue encoding & Redundant channel required & CVD sole-hue failure & WCAG~2.1 \\
+ & HC-COLOR-005 & categorical color & Max 12 hue values & Search degrades beyond 12 & Ware~'04 \\
+ & HC-COLOR-006 & diverging colormap & Data has meaningful midpoint & False center perception & Brewer~'03 \\
+\midrule
+\multirow{2}{*}{\rotatebox{90}{Inter.}}
+ & HC-INTER-001 & zoom enabled & Bounded extents & Prevents disorientation & Shneiderman~'96 \\
+ & HC-INTER-002 & brush, empty selection & Reset all views to default & Prevents stuck empty state & Heer~'12 \\
+\midrule
+\multirow{3}{*}{\rotatebox{90}{Data}}
+ & HC-MARK-001 & any mark type & Size $\geq$ 2.5px & Sub-pixel invisibility & Ware~'04 \\
+ & HC-DATA-001 & scale domain & Computed from data extent & Algebraic consistency & Kindlmann~'14 \\
+ & HC-DATA-002 & data.length = 0 & Display ``No Data'' message & Blank canvas confusion & Best practice \\
+ & HC-STROOP & labels with color assoc. & No semantic color conflicts & Stroop interference & Lin~'13 \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsection{Soft Constraints}
+
+The 26~soft constraints encode weighted design preferences organized into five categories (\Cref{tab:soft}): encoding effectiveness (7~constraints, \eg{}, preferring position channels for quantitative data following the Cleveland--McGill hierarchy), color and perception quality (4~constraints, \eg{}, recommending perceptually uniform colormaps), interaction design (5~constraints, \eg{}, recommending aggregation for high-density datasets), visual design completeness (5~constraints, \eg{}, requiring chart titles and legends), and task-specific recommendations (5~constraints, \eg{}, recommending brush/filter for explore tasks).
+
+\begin{table}[!t]
+\centering
+\caption{Selected soft constraints with weights ($w$). Higher weights indicate greater importance.}
+\label{tab:soft}
+\small
+\begin{tabular}{@{}llcl@{}}
+\toprule
+\textbf{ID} & \textbf{Constraint} & $w$ & \textbf{Source} \\
+\midrule
+\multicolumn{4}{@{}l}{\textit{Encoding Effectiveness (7 constraints)}} \\
+SC-EFF-001 & Position for quantitative & 3 & Cleveland~'84 \\
+SC-EFF-002 & Line for temporal data & 2 & Mackinlay~'86 \\
+SC-EFF-003 & Sqrt scale for area encoding & 2 & Flannery~'71 \\
+SC-EFF-005 & Familiar charts for audience & 2 & Bostock~'11 \\
+\midrule
+\multicolumn{4}{@{}l}{\textit{Color \& Perception (4)}} \\
+SC-COLOR-001 & Perceptually uniform colormaps & 2 & Liu \& Heer~'18 \\
+SC-COLOR-002 & CVD-safe palettes & 2 & Okabe~'08 \\
+\midrule
+\multicolumn{4}{@{}l}{\textit{Interaction (5)}} \\
+SC-INTER-001 & Scalable rendering for $N > 10$K & 2 & Heer~'10 \\
+SC-INTER-002 & Aggregation for high density & 2 & Shneiderman~'96 \\
+SC-INTER-004 & Brush/filter for explore tasks & 2 & Brehmer~'13 \\
+\midrule
+\multicolumn{4}{@{}l}{\textit{Design Completeness (5)}} \\
+SC-DESIGN-001 & Title and legend present & 1 & Few~'12 \\
+SC-DESIGN-005 & Tooltips for complex charts & 2 & Heer~'12 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+%%=============================================
+%% 5. CONSTRAINT REASONING ENGINE
+%%=============================================
+\section{Constraint Reasoning Engine}
+\label{sec:engine}
+
+The Constraint Reasoning Engine bridges the gap between the analyst's natural language intent and the structured design constraints described in the previous section (\textbf{G2}). Rather than injecting all constraints indiscriminately---which would overwhelm the LLM's context and dilute the most relevant guidance---the engine performs \textit{contextual reasoning} to select and prioritize constraints based on the characteristics of the current data and the inferred analytical task.
+
+\subsection{Data Characterization}
+
+The first stage constructs a \textit{DataProfile} $\mathcal{P}$ that characterizes the input dataset along four dimensions relevant to visualization design:
+
+\textbf{Measurement levels.} Following Stevens' theory of scales~\cite{stevens1946theory}, each field is classified as quantitative ($Q$, ratio/interval), ordinal ($O$), nominal ($N$), or temporal ($T$). This classification directly determines which encoding channels are expressively appropriate---the fundamental principle underlying Mackinlay's APT~\cite{mackinlay1986automating}.
+
+\textbf{Cardinality.} The number of distinct values determines whether a field is suitable for categorical encoding (color hue, shape) or requires continuous encoding (position, luminance). Fields with more than 12~unique values exceed Ware's~\cite{ware2004information} discriminability limit for categorical color, triggering HC-COLOR-005.
+
+\textbf{Density.} The total number of records determines the visual complexity of the resulting visualization. High-density datasets ($>10$K records) activate interaction constraints recommending scalable rendering and data aggregation to prevent the overplotting that Ellis and Dix~\cite{ellis2007clutter} identified as a primary source of visual clutter.
+
+\textbf{Structure.} The engine identifies whether the data is flat (tabular), hierarchical (tree-like), networked (relational), temporal (time series), or spatial (geographic), as different structures call for fundamentally different visualization approaches.
+
+\subsection{Task Inference}
+
+The second stage maps the user's natural language prompt to the Brehmer--Munzner task typology~\cite{brehmer2013multi}, producing a structured \textit{TaskSpec} $\mathcal{T} = (\text{why}, \text{search}, \text{query})$ that captures the analyst's intent along three orthogonal dimensions:
+
+The \textit{why} dimension distinguishes between \textbf{discover} (exploratory analysis: finding patterns, understanding structure) and \textbf{present} (communicating known findings to an audience). This distinction has direct design implications: exploratory tasks benefit from interactive filtering and flexible views, while presentation tasks prioritize clarity and familiar visual idioms.
+
+The \textit{search} dimension captures the analyst's navigation strategy: \textbf{lookup} (finding a specific known value), \textbf{browse} (scanning a range), \textbf{locate} (finding spatial or temporal position), or \textbf{explore} (forming an overview without a specific target). The explore strategy, in particular, activates Shneiderman's~\cite{shneiderman1996eyes} ``overview first'' principle and the associated brush/filter constraints.
+
+The \textit{query} dimension identifies the analytical operation: \textbf{identify} (finding outliers or anomalies), \textbf{compare} (assessing differences between groups), or \textbf{summarize} (characterizing distributions and trends). Each operation type prioritizes different constraints---comparison tasks emphasize encoding effectiveness (Cleveland--McGill rankings ensure the most important data dimension receives the most perceptually accurate channel), while identification tasks prioritize tooltip and annotation constraints.
+
+\subsection{Encoding Effectiveness Ranking}
+
+The third stage applies the Cleveland--McGill hierarchy~\cite{cleveland1984graphical} to recommend the most perceptually effective visual channels for each data field:
+
+\begin{equation}
+\text{Suggest}(f_i) = \arg\max_{c \,\in\, \text{Channels}} \; \text{Effectiveness}(c, \tau_i)
+\label{eq:suggest}
+\end{equation}
+
+The effectiveness rankings are type-specific: for quantitative data, position on a common scale is most accurate, followed by non-aligned position, length, angle, area, and color saturation~\cite{cleveland1984graphical,heer2010crowdsourcing}; for nominal data, spatial region and color hue are most effective~\cite{mackinlay1986automating}; for temporal data, horizontal position is strongly preferred by convention.
+
+\subsection{Context Assembly and Injection}
+
+The final stage assembles the DataProfile $\mathcal{P}$, TaskSpec $\mathcal{T}$, encoding suggestions, density-appropriate rendering strategy, palette recommendation, and applicable constraints into a structured context $\mathcal{C}$:
+
+\begin{equation}
+\mathcal{C} = \text{Assemble}(\mathcal{P}, \mathcal{T}, \text{Enc}(F), \text{Density}(|D|), \text{Palette}(\mathcal{P}), \text{Filter}(\mathcal{H} \cup \mathcal{S}, \mathcal{P}, \mathcal{T}))
+\end{equation}
+
+where $\text{Filter}(\cdot)$ selects only those constraints whose activation conditions match the current DataProfile and TaskSpec. This selective filtering is essential: in our ontology of 42~constraints, a typical data characterization activates only 8--15 constraints, reducing the cognitive burden on the LLM while focusing attention on the most relevant design considerations.
+
+Critically, the assembled context includes not only the constraint rules but also their design rationales and literature citations. This enables the LLM to produce visualizations whose design choices are justified by established research---a form of ``chain-of-thought'' reasoning grounded in visualization theory rather than general-purpose logic.
+
+%% Paper continues in next section...
+%% (Design Lint, Visualization, VisArt-Bench, Evaluation, Discussion, Conclusion)
+
+\input{visart_tvcg_part2}
+
+\bibliographystyle{elsarticle-num}
+\bibliography{references_visart}
+
+\end{document}

@@ -13,31 +13,20 @@ interface D3RendererProps {
   hoveredCategory?: string | null;
 }
 
-const D3Renderer: React.FC<D3RendererProps> = ({ 
-  code, 
-  containerId, 
-  title, 
-  data, 
-  isLoading, 
-  onHover,
-  hoveredCategory 
-}) => {
+const D3Renderer: React.FC<D3RendererProps> = ({ code, containerId, title, data, isLoading, onHover, hoveredCategory }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Sync highlighting based on hoveredCategory
   useEffect(() => {
     if (!containerRef.current || !code) return;
-    
     const svg = d3.select(containerRef.current).select('svg');
     if (!svg.empty()) {
-      svg.selectAll(`[data-category]`)
-         .transition().duration(250)
-         .style('opacity', (d: any, i: any, nodes: any) => {
-           if (!hoveredCategory) return 1;
-           const cat = d3.select(nodes[i]).attr('data-category');
-           return cat === hoveredCategory ? 1 : 0.1;
-         });
+      svg.selectAll('[data-category]').transition().duration(250)
+        .style('opacity', (d: any, i: any, nodes: any) => {
+          if (!hoveredCategory) return 1;
+          const cat = d3.select(nodes[i]).attr('data-category');
+          return cat === hoveredCategory ? 1 : 0.15;
+        });
     }
   }, [hoveredCategory, code]);
 
@@ -48,111 +37,151 @@ const D3Renderer: React.FC<D3RendererProps> = ({
     const render = () => {
       if (!containerRef.current) return;
       const { clientWidth: width, clientHeight: height } = containerRef.current;
-      
-      // Retry if container is not yet measured
-      if (width === 0 || height === 0) {
-        setTimeout(render, 100);
-        return;
-      }
-
+      if (width === 0 || height === 0) { setTimeout(render, 100); return; }
       containerRef.current.innerHTML = '';
-      
-      try {
-        // IMPORTANT: Deep clone data to prevent AI-generated code from adding 
-        // circular references (like .parent) to the shared React state.
-        const clonedData = JSON.parse(JSON.stringify(data));
-        
-        // Inject plugins and fixes for common AI hallucinations
-        const d3WithPlugins = { 
-          ...d3, 
-          hexbin,
-          // AI often hallucinates 'scalePower' instead of 'scalePow'
-          scalePower: d3.scalePow 
-        };
 
-        // Explicitly pass variables into the isolated function scope
-        // Note: We do NOT declare 'container' here to avoid naming conflicts if the LLM code defines it.
-        // The LLM is instructed to use d3.select("#" + containerId).
+      try {
+        const clonedData = JSON.parse(JSON.stringify(data));
+        const d3WithPlugins = { ...d3, hexbin, scalePower: d3.scalePow };
+
         let executeCode;
         try {
           executeCode = new Function('d3', 'containerId', 'data', 'onHover', 'width', 'height', `
             "use strict";
-            try {
-              ${code}
-            } catch (e) {
-              console.error("Inner D3 Runtime Error:", e);
-              throw e;
-            }
+            try { ${code} } catch (e) { console.error("D3 Runtime Error:", e); throw e; }
           `);
         } catch (syntaxErr) {
-           console.error("D3 Code Syntax Error:", syntaxErr);
-           setError("Generated Code Syntax Error: " + (syntaxErr as any).message);
-           return;
+          setError('Syntax Error: ' + (syntaxErr as any).message);
+          return;
         }
-        
         executeCode(d3WithPlugins, containerId, clonedData, onHover, width, height);
       } catch (err: any) {
         console.error(`D3 Execution Error [${containerId}]:`, err);
         setError(err.message);
       }
     };
-
     render();
   }, [code, containerId, data]);
 
   return (
-    <div className="flex flex-col h-full min-h-0 bg-white rounded-xl border border-slate-200 overflow-hidden relative group shadow-inner">
-      <div className="bg-slate-50/80 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-500 border-b border-slate-200 flex justify-between items-center z-10 backdrop-blur-md">
-        <span className="flex items-center gap-2">
-          <div className={`w-1.5 h-1.5 rounded-full ${code ? 'bg-emerald-500' : 'bg-slate-300'}`} />
-          {title}
+    <div style={{
+      width: '100%', height: '100%',
+      display: 'flex', flexDirection: 'column',
+      background: '#ffffff',
+      border: '1px solid var(--border-base)',
+      borderRadius: '12px', overflow: 'hidden',
+    }}>
+      {/* Header */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '8px 14px', flexShrink: 0,
+        borderBottom: '1px solid var(--border-base)',
+        background: 'var(--bg-subtle)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{
+            width: '7px', height: '7px', borderRadius: '50%',
+            background: code ? '#059669' : '#d1d5db',
+            boxShadow: code ? '0 0 0 2px rgba(5,150,105,0.2)' : 'none',
+            transition: 'all 0.4s',
+          }} />
+          <span style={{ fontSize: '9.5px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
+            {title}
+          </span>
+        </div>
+        <span style={{ fontSize: '8px', color: 'var(--text-placeholder)', fontFamily: 'JetBrains Mono, monospace' }}>
+          #{containerId}
         </span>
-        <div className="flex items-center gap-3">
-           {isLoading && <div className="w-2 h-2 rounded-full bg-indigo-500 animate-ping" />}
-           <span className="text-[9px] text-slate-400 font-mono">#{containerId}</span>
-        </div>
       </div>
-      
-      <div className="flex-grow relative min-h-0 overflow-hidden bg-slate-50/30">
+
+      {/* Canvas area */}
+      <div style={{ flex: 1, position: 'relative', overflow: 'hidden', background: '#fafafa' }}>
+
+        {/* Loading state */}
         {isLoading && (
-          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-white/60 backdrop-blur-sm transition-all duration-500">
-             <div className="w-10 h-10 border-2 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mb-4" />
-             <div className="flex flex-col items-center gap-1">
-               <span className="text-[10px] text-indigo-600 font-bold uppercase tracking-tighter animate-pulse">Agent is thinking...</span>
-               <span className="text-[9px] text-slate-500">Synthesizing D3 Logic</span>
-             </div>
+          <div style={{
+            position: 'absolute', inset: 0, zIndex: 20,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(255,255,255,0.88)', backdropFilter: 'blur(6px)',
+          }}>
+            <div style={{ position: 'relative', marginBottom: '18px' }}>
+              <div style={{
+                width: '40px', height: '40px', borderRadius: '50%',
+                border: '2px solid rgba(91,110,245,0.15)',
+                borderTop: '2px solid var(--accent-primary)',
+                animation: 'spin 0.9s linear infinite',
+              }} />
+              <div style={{
+                position: 'absolute', inset: '7px', borderRadius: '50%',
+                border: '2px solid rgba(124,93,249,0.12)',
+                borderBottom: '2px solid var(--accent-secondary)',
+                animation: 'spin 1.4s linear infinite reverse',
+              }} />
+            </div>
+            <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--accent-primary)', marginBottom: '4px' }}>
+              Agent Synthesizing
+            </div>
+            <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+              Applying design constraints...
+            </div>
           </div>
         )}
-        
+
+        {/* Error */}
         {error && (
-          <div className="absolute inset-x-4 top-4 z-30 p-3 bg-red-50 border border-red-200 rounded-lg backdrop-blur-md shadow-sm">
-            <div className="text-[10px] font-bold text-red-600 uppercase mb-1 text-center">Execution Error</div>
-            <div className="text-[9px] text-red-800 font-mono text-center break-words opacity-90">{error}</div>
+          <div style={{
+            position: 'absolute', top: '12px', left: '12px', right: '12px', zIndex: 30,
+            background: 'rgba(254,242,242,1)', border: '1px solid rgba(254,202,202,1)',
+            borderRadius: '8px', padding: '10px 12px',
+          }}>
+            <div style={{ fontSize: '9px', fontWeight: 700, color: '#b91c1c', marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              ⚠ Execution Error
+            </div>
+            <div style={{ fontSize: '9px', color: '#7f1d1d', fontFamily: 'JetBrains Mono, monospace', lineHeight: 1.6, wordBreak: 'break-all' }}>
+              {error}
+            </div>
           </div>
         )}
 
+        {/* Empty state */}
         {!code && !isLoading && (
-          <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 gap-2 opacity-60">
-            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <span className="text-[10px] font-medium tracking-widest uppercase">Canvas Empty</span>
+          <div style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            height: '100%', gap: '12px',
+          }}>
+            <div style={{
+              width: '56px', height: '56px', borderRadius: '14px',
+              background: 'var(--bg-muted)', border: '1px solid var(--border-base)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="21" x2="9" y2="9" />
+              </svg>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px' }}>Canvas Empty</div>
+              <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+                Run the pipeline to generate a visualization
+              </div>
+            </div>
           </div>
         )}
 
-        <div 
-          id={containerId} 
-          ref={containerRef} 
-          className="w-full h-full flex items-center justify-center overflow-hidden transition-opacity duration-700"
-          style={{ touchAction: 'none', opacity: code ? 1 : 0 }}
+        <div
+          id={containerId}
+          ref={containerRef}
+          style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', touchAction: 'none', opacity: code ? 1 : 0, transition: 'opacity 0.4s' }}
         />
+
+        {/* Hint */}
+        {code && (
+          <div style={{ position: 'absolute', bottom: '8px', left: '50%', transform: 'translateX(-50%)', fontSize: '8px', color: 'var(--text-placeholder)', letterSpacing: '0.08em', textTransform: 'uppercase', pointerEvents: 'none', whiteSpace: 'nowrap' }}>
+            Scroll to Zoom · Drag to Pan
+          </div>
+        )}
       </div>
-      
-      {code && (
-        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-all duration-300 bg-white/90 px-3 py-1 rounded-full text-[8px] text-slate-500 pointer-events-none border border-slate-200 uppercase tracking-widest whitespace-nowrap shadow-xl scale-95 group-hover:scale-100">
-          Scroll to Zoom • Drag to Explore
-        </div>
-      )}
+
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 };

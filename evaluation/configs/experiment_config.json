@@ -1,0 +1,152 @@
+{
+    "experiment_name": "VisArt Comparative Evaluation",
+    "version": "1.0",
+    "systems": {
+        "baseline_a": {
+            "name": "Baseline-A: Raw LLM",
+            "description": "Direct Gemini D3 code generation without any knowledge injection",
+            "config": {
+                "use_rag": false,
+                "use_constraint_engine": false,
+                "use_design_lint": false,
+                "use_auto_repair": false,
+                "prompt_template": "Generate a D3.js visualization for: {prompt}. Data: {data}"
+            }
+        },
+        "baseline_b": {
+            "name": "Baseline-B: LLM + Text RAG",
+            "description": "Current VisArt architecture with keyword-matched text rules",
+            "config": {
+                "use_rag": true,
+                "use_constraint_engine": false,
+                "use_design_lint": false,
+                "use_auto_repair": false,
+                "rag_mode": "text_keyword",
+                "prompt_template": "Generate D3 viz for: {prompt}. Context: {rag_context}"
+            }
+        },
+        "baseline_c": {
+            "name": "Baseline-C: LLM + Draco-style Constraints",
+            "description": "LLM with only Draco-2-style ASP constraints, no VisArt knowledge base",
+            "config": {
+                "use_rag": false,
+                "use_constraint_engine": true,
+                "constraint_source": "draco_asp_only",
+                "use_design_lint": false,
+                "use_auto_repair": false
+            }
+        },
+        "visart_full": {
+            "name": "VisArt-Full",
+            "description": "Complete system: Formalized constraints + Design Lint + Auto-repair loop",
+            "config": {
+                "use_rag": true,
+                "use_constraint_engine": true,
+                "use_design_lint": true,
+                "use_auto_repair": true,
+                "max_repair_iterations": 3,
+                "lint_threshold": 70
+            }
+        }
+    },
+    "ablation": {
+        "full": {
+            "constraint_engine": true,
+            "design_lint": true,
+            "auto_repair": true,
+            "description": "Complete system"
+        },
+        "no_lint": {
+            "constraint_engine": true,
+            "design_lint": false,
+            "auto_repair": false,
+            "description": "Without Design Lint and auto-repair"
+        },
+        "no_constraint": {
+            "constraint_engine": false,
+            "design_lint": true,
+            "auto_repair": true,
+            "description": "Without Constraint Engine"
+        },
+        "no_autofix": {
+            "constraint_engine": true,
+            "design_lint": true,
+            "auto_repair": false,
+            "description": "Without auto-repair loop"
+        },
+        "base": {
+            "constraint_engine": false,
+            "design_lint": false,
+            "auto_repair": false,
+            "description": "Text RAG only (current VisArt)"
+        }
+    },
+    "metrics": [
+        {
+            "id": "CCR",
+            "name": "Constraint Compliance Rate",
+            "formula": "passed_hard_constraints / total_hard_constraints",
+            "range": [
+                0,
+                1
+            ],
+            "higher_is_better": true
+        },
+        {
+            "id": "DQS",
+            "name": "Design Quality Score",
+            "formula": "100 - sum(penalties)",
+            "range": [
+                0,
+                100
+            ],
+            "higher_is_better": true
+        },
+        {
+            "id": "EMR",
+            "name": "Encoding Match Rate",
+            "formula": "matched_encodings / total_expert_encodings",
+            "range": [
+                0,
+                1
+            ],
+            "higher_is_better": true
+        },
+        {
+            "id": "PE",
+            "name": "Perceptual Effectiveness",
+            "formula": "sum(channel_rank_scores) / max_possible_score",
+            "range": [
+                0,
+                1
+            ],
+            "higher_is_better": true
+        },
+        {
+            "id": "AS",
+            "name": "Accessibility Score",
+            "formula": "(contrast_pass + cvd_safe) / 2",
+            "range": [
+                0,
+                1
+            ],
+            "higher_is_better": true
+        },
+        {
+            "id": "RSR",
+            "name": "Rendering Success Rate",
+            "formula": "successful_renders / total_attempts",
+            "range": [
+                0,
+                1
+            ],
+            "higher_is_better": true
+        }
+    ],
+    "evaluation_settings": {
+        "runs_per_task": 3,
+        "timeout_seconds": 60,
+        "retry_on_failure": true,
+        "max_retries": 2
+    }
+}

@@ -1,0 +1,485 @@
+%% 
+%% Copyright 2007-2025 Elsevier Ltd
+%% 
+%% This file is part of the 'Elsarticle Bundle'.
+%% ---------------------------------------------
+%% 
+\documentclass[final,5p,times,twocolumn]{elsarticle} 
+%% 注意：我使用了 'review' 选项，这样会有行号和双倍行距，适合投稿审阅。
+%% 如果你想看紧凑版，可以将上一行改为：\documentclass[final,5p,times,twocolumn]{elsarticle}
+
+%% ===============================================
+%% 宏包加载区域 (Packages)
+%% ===============================================
+
+%% 1. 数学符号包 (官方模板自带)
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{mathptmx} % 你原论文使用的字体
+
+%% 2. 图形包 (官方模板说明 elsarticle.cls 已自动加载 graphicx，但显式写出无妨)
+\usepackage{graphicx}
+\graphicspath{{figs/}{figures/}{pictures/}{images/}{./}} % 图片路径
+
+%% 3. 表格与其他工具包 (来自你的原论文)
+\usepackage{tabu}
+\usepackage{booktabs}
+\usepackage{lipsum}
+\usepackage{mwe}
+
+%% 4. 行号包 (官方模板推荐)
+\usepackage{lineno}
+
+%% 5. 引用与交叉引用包 (关键修改：必须按此顺序加载以修复报错)
+%% hyperref 必须在 cleveref 之前加载
+\usepackage[hidelinks]{hyperref} 
+%% cleveref 必须是最后一个加载的包
+\usepackage[capitalise]{cleveref}
+
+%% ===============================================
+%% 期刊名称
+%% ===============================================
+\journal{Visual Informatics} 
+
+\begin{document}
+
+\begin{frontmatter}
+
+%% ===============================================
+%% 标题 (Title)
+%% ===============================================
+\title{MulNetVis: Multiscale Temporal and Structural Summaries of Large-scale Dynamic Networks}
+
+%% ===============================================
+%% 作者与单位 (Authors & Affiliations)
+%% ===============================================
+
+%% 定义单位 1
+\affiliation[inst1]{organization={Alibaba Business School, Hangzhou Normal University},%Department and Organization
+            city={Hangzhou},
+            country={China}}
+
+%% 定义单位 2
+\affiliation[inst2]{organization={State Key Laboratory of CAD\&CG, Zhejiang University},
+            city={Hangzhou},
+            country={China}}
+
+%% 定义单位 3
+\affiliation[inst3]{organization={School of Information Science and Technology, Hangzhou Normal University},
+            city={Hangzhou},
+            country={China}}
+
+%% 定义作者
+\author[inst1]{Shuyao Zhang}
+\ead{zhangshuyao@stu.hznu.edu.cn}
+
+\author[inst1]{Kun Zhang}
+\ead{zhangkun@stu.hznu.edu.cn}
+
+\author[inst2]{Yubo Tao}
+\ead{taoyubo@cad.zju.edu.cn}
+
+\author[inst1]{Chengxiang Yu}
+\ead{yuchengxiang@stu.hznu.edu.cn}
+
+\author[inst3]{Qingshu Yuan}
+\ead{yuanqingshu@hznu.edu.cn}
+
+%% 通讯作者
+\author[inst1]{Jin Xu\corref{cor1}}
+\ead{xujin@hznu.edu.cn}
+\cortext[cor1]{Corresponding author.}
+
+%% ===============================================
+%% 摘要 (Abstract)
+%% ===============================================
+\begin{abstract}
+Providing evolutionary overviews of large-scale dynamic networks is critical for understanding topological change, yet remains challenging due to the dependence on appropriate temporal and structural granularities. Existing approaches typically address temporal or structural abstraction in isolation and lack integrated multiscale summaries for heterogeneous network evolution. We present MulNetVis, a visual analytics framework that integrates adaptive multiscale time slicing with multiscale substructural abstraction to enable scalable exploration of large-scale dynamic networks. Temporally, we propose a topology-aware time slicing method that hierarchically discretizes dynamic networks across temporal granularities. Structurally, we introduce a substructural abstraction that summarizes substructures through groups of structurally similar nodes, enabling interpretable analysis of evolving substructures. To guide granularity selection, we further define quality metrics that evaluate different temporal and substructural granularities. We instantiate these techniques in an interactive visualization system supporting multiscale exploration of dynamic network evolution. Comparative experiments show that our adaptive time slicing reveals internal topological dynamics more effectively than existing methods, and case studies demonstrate the practical utility of MulNetVis.
+\end{abstract}
+
+%% ===============================================
+%% 关键词 (Keywords)
+%% ===============================================
+\begin{keyword}
+%% 关键词使用 \sep 分隔
+Visual Analytics \sep Dynamic Network \sep Multiscale Visualization
+\end{keyword}
+
+\end{frontmatter}
+
+%% 开启行号
+\linenumbers
+
+%% ===============================================
+%% Teaser Figure (放在正文最前面)
+%% ===============================================
+%% elsarticle 不支持 \teaser，使用 figure* 代替
+
+
+%% ===============================================
+%% 正文 (Main Text)
+%% ===============================================
+
+\section{Introduction}
+\label{sec:intro}
+Large-scale dynamic networks model evolving entity relationships across many domains~\cite{10234572,NEURIPS2023_066b98e6}. Following Linhares et al.~\cite{linhares2022largenetvis}, we define large-scale dynamic networks as those with thousands of nodes or timestamps. A representative example is the Reddit dataset~\cite{kumar2018community}, which encompasses five years of interaction data with approximately 55K nodes and 850K edges, exhibiting complex internal substructure evolutions across distinct life cycles. A primary objective in analyzing such networks is to extract insights into the underlying topological evolution in a readable, scalable, and expressive manner~\cite{cakmak2020multiscale,linhares2022largenetvis,8107975}. 
+
+Traditionally, dynamic network visualizations employ time slicing to identify temporal intervals and structural abstraction to summarize snapshot topologies~\cite{van2015reducing,dal2017wavelet,cakmak2022motif}. These design choices fundamentally shape the observed patterns. However, existing time slicing methods typically use rigid uniform intervals (e.g., daily or monthly) or nonuniform schemes driven by simple metrics (e.g., degree or density), which insufficiently capture local topological changes. Meanwhile, current structural abstractions remain largely confined to snapshot-level summaries and offer limited support for exploring substructures within snapshots.
+
+Substructural analysis in large-scale dynamic networks remains challenging due to the computational complexity of substructure discovery. To date, only a few substructure-oriented frameworks have been proposed. Early work~\cite{cakmak2020motionglyphs} primarily focuses on community detection, which captures only one aspect of substructural organization. More recent approaches~\cite{cakmak2022motif,linhares2022largenetvis} incorporate network motifs or community taxonomies, but are restricted to small, predefined sets of patterns (e.g., thirteen triad motifs or twenty community types), failing to reflect the rich diversity of substructures in real-world networks. Moreover, substructures often evolve at heterogeneous temporal rates, rendering a single time slicing strategy inadequate: rapidly changing substructures require fine-grained intervals, while more stable ones benefit from coarser intervals to reveal long-term trends. These limitations highlight a critical gap: the absence of integrated multiscale summaries that jointly capture heterogeneous temporal and substructural evolution.
+
+To address this gap, we present MulNetVis, a visual analytics framework that integrates adaptive multiscale time slicing with multiscale substructural abstraction. We introduce an adaptive time slicing method that constructs a snapshot hierarchy by balancing local topological changes across snapshots. Building on the effectiveness of structural roles for summarizing local topology~\cite{linhares2022largenetvis,rossi2020proximity}, we further propose a hierarchical role-centric substructural abstraction to support scalable multiscale substructural analysis. In addition, we define quality metrics to automatically recommend appropriate analysis granularities that jointly consider temporal and substructural abstraction. Together, these components enable scalable exploration of heterogeneous temporal and substructural evolution in large-scale dynamic networks.
+
+
+The main contributions of this paper are as follows:
+\begin{itemize}
+    \item A multiscale nonuniform time slicing method that adaptively discretizes dynamic networks by balancing local topological changes across snapshots.
+    \item A multiscale role-centric substructural abstraction that enables scalable analysis of diverse substructures beyond predefined motifs or communities.
+    \item Quality metrics for automatically recommending appropriate analysis granularities that jointly consider temporal and substructural abstraction.
+\end{itemize}
+
+
+\section{Related Work}
+\subsection{Dynamic Network Slicing}
+Selecting the proper interval of time slices, also referred to as the slicing granularity in this paper, is crucial for understanding the evolving structure of a dynamic network~\cite{jung2023monetexplorer}, as the number of time slices (snapshots) influences the topology shown and measures taken for each time slice~\cite{moody2005dynamic,10787140}.
+
+In the graph mining domain, existing dynamic network slicing methods are typically categorized into two categories: uniform and nonuniform time slicing strategies. Uniform methods aim to determine an optimal global time interval for slicing, often relying on network metrics such as node degree or node positional dynamicity to evaluate slicing performance~\cite{leo2015non,uddin2017optimal}. In contrast, nonuniform methods generate slices of varying time intervals according to specific tasks, such as link prediction, attribute prediction, or change-point detection~\cite{fish2017task,brugere2018network,sulem2024graph,10817616}. Compared with the former, these methods better accommodate the nonuniform temporal distribution of topological changes and are generally more applicable to real-world data.
+
+In the visualization domain, most existing studies have not yet fully focused on time slicing, primarily relying on fixed time slice length (e.g., one day, one month, or one year) to discretize dynamic networks~\cite{pena2022hyperstorylines,Filipov14794,Kale14856}. Recently, Cakmak et al.~\cite{cakmak2020multiscale} introduced a hierarchical uniform time slicing method for multiscale dynamic network analysis, but internal structural dynamics were not explicitly considered. More recent works have explored nonuniform slicing methods based on network metrics or user interaction. For instance, Plaid~\cite{lee2019plaid} and other systems~\cite{lee2020effectiveness,chang2022dgsvis,vago15076} support interactive user-defined slicing, while TimeLighting~\cite{filipov2025timelighting} guides exploration based on temporal projection density. Hierarchical strategies have also been proposed; specifically, Bach et al.~\cite{bach2014} employed hierarchical clustering on time slices to manage long timelines, while others focused on balancing visual complexity~\cite{wang2019nonuniform} or merging unchanged time slices~\cite{xie2020interactive}. However, these approaches typically rely on manual intervention, global density metrics, or projection scatter. Consequently, they fail to fully reveal internal topological evolutions. For example, different nodes may play varying roles (e.g., bridge versus hub) during the evolution process, and the addition or removal of key nodes can significantly affect the local structure even when global metrics remain stable.
+
+In summary, prior studies have demonstrated the validity of nonuniform time slicing, the necessity of multiscale time slicing, and the feasibility of structure-aware slicing. However, existing research remains fragmented, lacking integration of complementary strategies, which limits their generalizability across different network types and analytical tasks. Moreover, current approaches do not exploit local structural features to guide adaptive time slicing.
+
+\subsection{Dynamic Network Visual Analysis}
+Dynamic network visual analysis can be broadly categorized into whole-network and ego-network perspectives~\cite{chung2005exploring}, depending on whether the analysis emphasizes global structure or local substructures.
+
+Whole-network visual analysis typically relies on structural abstraction to provide high-level overviews for large-scale dynamic network evolutions. Existing abstraction strategies can be grouped into snapshot-centric, node-centric, and substructure-centric approaches. Snapshot-centric abstractions summarize each snapshot as a whole. For example, van den Elzen et al.~\cite{van2015reducing} embedded adjacency matrices to represent each snapshot as a 2D point, enabling holistic state comparison. Dal Col et al.~\cite{dal2017wavelet} proposed a wavelet-based abstraction that maps aggregated node signals to circular glyphs, supporting the detection of subtle and abrupt changes. Cakmak et al.~\cite{cakmak2020dg2pix} embedded snapshots and encoded them as pixel bars to highlight temporal states and transitions. While effective for global summarization, these methods largely overlook internal topological dynamics. Node-centric abstractions aim to reveal internal evolution by tracking node representations over time. Xu et al.~\cite{xu2018exploring} proposed diachronic node embeddings combined with clustering to analyze node-level evolution. However, such approaches are typically limited to medium-scale networks and rely on opaque embeddings, making it difficult to interpret observed changes in terms of explicit structural properties. More recently, substructure-centric abstraction approaches have emerged to support scalable exploration while revealing substructural evolutions. For instance, Cakmak et al.~\cite{cakmak2022motif} summarized dynamic networks through motif distributions, and LargenetVis~\cite{linhares2022largenetvis} leveraged community taxonomies to reveal structural and temporal patterns. Nevertheless, these approaches are constrained to a small set of predefined substructures (e.g., thirteen triad motifs or twenty community types), which limits their ability to capture the diverse local structures present across different network types and analytical tasks.
+
+Ego-network visual analysis focuses on substructures centered around focal nodes and their neighborhoods~\cite{prell2011social}, examining how local adjacency relationships evolve over time. Prior work has explored ego-network evolution using node-link diagrams~\cite{farrugia2011exploring,shi20141,liu2017egocomp,reitz2010framework}, storylines~\cite{peng2018dmnevis,wu2015egoslider}, and auxiliary encodings such as influence or propagation metaphors~\cite{fu2021dyegovis,wang2022egocentric}. For example, Zhao et al.~\cite{zhao2016egocentric} used a subway metaphor to depict ego-network evolution, while Law et al.~\cite{law2018segue} and Kuo et al.~\cite{kuo2024spreadline} proposed scalable frameworks to analyze collections of egos. Recent work by Xie et al.~\cite{xie2022roleseer} modeled ego-networks via node embeddings to identify informal roles and visualize their transitions over time. However, such methods again rely on latent embeddings, limiting interpretability and making it difficult to relate role changes to explicit structural features. Overall, existing ego-network approaches primarily focus on individual nodes or small sets of egos, and thus remain insufficient for analyzing global evolutions in large-scale dynamic networks. 
+
+
+To address these limitations, our work treats ego-networks as fundamental substructures and interprets them as structural roles. Building on this perspective, we adopt a role-centric substructural abstraction that enables scalable, interpretable analysis of both global and local evolutions within large-scale dynamic networks.
+
+\section{System Overview}
+According to the research gaps in related work and guided by the dynamic network task taxonomies of Bach et al. \cite{6658746} and Cakmak et al.~\cite{cakmak2020multiscale}, we derived the following four design goals for our system (G):
+
+\begin{figure*}[!t]
+  \centering
+  \includegraphics[width=\textwidth, keepaspectratio,  alt={}]{figs/img/workflow.pdf}
+  \caption{%
+Workflow of MulNetVis. The data analysis module generates multiscale nonuniform temporal snapshots, derives hierarchical role-centric substructural abstractions, and evaluates granularity quality. The visualization module enables multiscale temporal–substructural overviews and exploration of heterogeneous role-centric evolution in dynamic networks.
+}
+  \label{fig:workflow}
+\end{figure*}
+
+\textbf{G1: Provide integrated multiscale temporal–substructural overviews.} The system should provide integrated overviews that jointly capture temporal evolution and substructural organization across multiple granularities. Such overviews should enable analysts to rapidly assess global patterns and compare different temporal and substructural granularities to guide subsequent exploration.
+
+\textbf{G2: Support adaptive temporal abstraction for heterogeneous temporal patterns.} The system should support adaptive temporal abstraction that reflects heterogeneous temporal patterns of substructures. Stable periods should be summarized at coarse granularity, whereas volatile phases should be represented at finer temporal granularities. Consequently, key temporal patterns—such as stable states, fluctuating states, recurring states, and distinctive anomalies—should be readily identifiable without manual parameter tuning.
+
+\textbf{G3: Enable interpretable multiscale substructural abstraction.} The system should support scalable and interpretable abstraction of diverse substructures beyond predefined motifs or communities, enabling analysis of global temporal patterns such as similar, recurring, and anomalous substructural organizations. It should further allow the identification, tracking, and comparison of structurally similar substructures across multiple temporal granularities, accommodating heterogeneous substructural evolution across granularities.
+
+\textbf{G4: Facilitate multiscale exploration from overview to detail.} The system should support seamless navigation between high-level overviews and detailed inspection, allowing analysts to drill down from global patterns to substructure- and node-level evolution and relate local behaviors back to overall network dynamics.
+
+Based on the design goals, MulNetVis is organized into a data analysis module and a visualization module (\cref{fig:workflow}). The data analysis module constructs a multiscale nonuniform snapshot hierarchy via adaptive time slicing and derives hierarchically organized, structurally similar substructures through role-centric substructural abstraction. Six quality metrics are defined to characterize temporal and substructural properties across granularities and to support informed granularity selection. The visualization module integrates coordinated views to enable integrated temporal–substructural overviews (\textbf{G1}), adaptive temporal exploration (\textbf{G2}), interpretable substructural analysis (\textbf{G3}), and progressive drill-down from overview to detail (\textbf{G4}).
+
+
+\section{Data Analysis}
+
+\subsection{Multiscale Time Slicing}
+First, we introduce a graph kernel distance. On this basis, we propose a general time slicing framework that integrates hierarchical slicing with histogram equalization to enable multiscale, nonuniform time slicing guided by local topological features.
+
+\subsubsection{Graph kernel distance}
+We propose a graph similarity measure based on the Weisfeiler–Lehman (WL) graph kernel~\cite{shervashidze2011weisfeiler}. Existing nonuniform time slicing methods rely on simple metrics (e.g., degree or density) and thus fail to capture local topological variations, whereas the WL kernel is computationally efficient and preserves rich local topological information in a high-dimensional Hilbert space. Furthermore, to account for importance disparities among nodes and edges in local topologies, we introduce a biased WL subtree kernel.
+
+A network can be represented as $G = (V, E, l, w)$, where $V$ is the set of nodes, $E$ is the set of edges, $l: V \to \Sigma$ is the node labeling function mapping to a finite label set, and $w: E \to \mathbb{R}$ is the edge weighting function. If the original network lacks node labels, node degrees are used as labels. If edge weights are absent, node importance is computed via ranking algorithms (e.g., PageRank), with edge weights assumed linearly correlated with the importance of endpoint nodes.
+
+First, we decompose the network by selecting the top-$N$ nodes based on importance. For each root node $v$, neighbors are sampled to construct a tree structure. The selection probability of neighbor $u$ is defined as:
+\begin{equation}
+p(u) = \frac{w(u,v)}{\sum_{k \in N(v)} w(k,v)},
+\end{equation}
+where $N(v)$ denotes the set of neighbors of node $v$. This decomposition generates a biased neighbor set $N_B(v)$ for node $v$. We then iteratively aggregate node labels and their neighbors' labels via the WL scheme. Let $l^t(v)$ be the label at iteration $t$:
+\begin{equation}
+l^{t+1}(v) = \text{hash}(l^t(v), N_B(v)),
+\end{equation}
+with $l^0(v) = l(v)$.Finally, graph similarity is computed using a bag-of-labels model. Given two labeled graphs $G$ and $G'$, let $\Sigma_0$ be their original label set and $\Sigma_i = \{\sigma_{i1}, \dots, \sigma_{i|\Sigma_i|}\}$ the ordered labels at iteration $i$. Define the mapping $c_i : \{G, G'\} \times \Sigma_i \to \mathbb{N}$, where $c_i(G, \sigma_{ij})$ counts occurrences of $\sigma_{ij}$ in $G$. The similarity after $t$ iterations is:
+\begin{equation}
+k_B^t(G, G') = \langle \phi_B^t(G), \phi_B^t(G') \rangle,
+\end{equation}
+where the feature vectors are defined as:
+\begin{equation}
+\begin{split}
+\phi_B^t(G) &= (c_0(G, \sigma_{01}), \dots, c_0(G, \sigma_{0|\Sigma_0|}), \dots, c_t(G, \sigma_{t1}), \dots, c_t(G, \sigma_{t|\Sigma_t|})), \\
+\phi_B^t(G') &= (c_0(G', \sigma_{01}), \dots, c_0(G', \sigma_{0|\Sigma_0|}), \dots, c_t(G', \sigma_{t1}), \dots, c_t(G', \sigma_{t|\Sigma_t|})).
+\end{split}
+\end{equation}
+
+\subsubsection{Hierarchical nonuniform time slicing}
+Inspired by uniform hierarchical slicing~\cite{cakmak2020multiscale} and histogram equalization-based nonuniform slicing~\cite{wang2019nonuniform} methods, we propose a nonuniform hierarchical slicing method based on the above graph kernel. This method, by default, discretizes level \(h\) into \(2^h\) time slices in a bottom-up manner, representing the temporal slicing from fine-grained to coarse-grained granularity.
+
+As shown in \cref{fig:workflow}, we first obtain a dynamic network with $T$ snapshots, or generate a fine-grained snapshot sequence through uniform time slicing (e.g., by day), $DG_{ori} = (G_1, G_2, \dots, G_T)$. Then, for each level $h$, we apply histogram equalization to process this sequence. The histogram is constructed to encode the biased WL kernel distance between adjacent snapshots over time $[0, T]$, with the number of bins set to $2^h$ to align with the final number of snapshots at that level. \(p(i)\) represents the probability that structural changes occur in the \(i\)-th snapshot:
+\begin{equation}
+p(i) = \left\{
+\begin{array}{ll}
+\frac{d_{BWL}(G_{i-1}, G_i)}{\sum_{z=2}^{T} d_{BWL}(G_{z-1}, G_z)}, & i > 1, \\
+0, & i = 1,
+\end{array}
+\right.
+\end{equation}
+where \(d_{BWL}(G_{i-1}, G_i)\) denotes the biased WL kernel distance between adjacent snapshots. The cumulative distribution function is then defined as:
+\begin{equation}
+P(i) = \sum_{j=1}^{i} p(j).
+\end{equation}
+Based on histogram equalization, level \(h\) is transformed into a new histogram as follows:
+\begin{equation}
+s_{h, i} = \left\lfloor (2^h - 1) \sum_{j=0}^{i} p(j) \right\rfloor = \left\lfloor (2^h - 1) P(i) \right\rfloor.
+\end{equation}
+This equalization transformation increases the number of slices during bursty events, preventing structural changes from being hidden, and reduces the number of slices during low-activity periods to improve screen efficiency.
+
+\subsection{Multiscale Role-Centric Abstraction}
+\label{sec:roleabstraction}
+Ego-networks, as fundamental substructures within a network, exhibit diverse sizes and topological characteristics. Structural roles inherently abstract these features, enabling a role-centric abstraction that enhances both the analytical diversity and scalability of substructure analysis. The method first generates interpretable role representations that capture substructural characteristics and then applies hierarchical clustering to derive multiscale role-centric abstractions.
+
+\textbf{Role representation. }Following a comprehensive survey of ego-network and general network analysis studies~\cite{backstrom2014romantic,burt2017structural,jarvenpaa2008knowledge,van2013small} and extensive consultations with domain experts, we derive ten features for characterizing roles in directed networks, as shown in Table~\ref{tab:ego_features}. Each role in a directed snapshot is thus represented by a 10-dimensional vector, forming the basis for subsequent role clustering.
+
+\begin{table}[!t]
+  \centering
+  \caption{Ten features for role characterization.}
+  \label{tab:ego_features}
+  \renewcommand{\arraystretch}{1.1}
+  \setlength{\tabcolsep}{4pt}
+  \small
+  \begin{tabular}{@{} l >{\raggedright\arraybackslash}p{0.9\columnwidth} @{}}
+    \hline
+    \textbf{Code} & \textbf{Definition / Interpretation} \\
+    \hline
+    In   & In-degree of node $u$, $indeg(u)$ \\
+    Out  & Out-degree of node $u$, $outdeg(u)$\\
+    AB   & Attractiveness balance of node $u$, $\frac{indeg(u)-1}{outdeg(u)-1}$, where a larger value indicates stronger attraction \\
+    RB   & Relationship balance of node $u$, $\frac{|N_{\text{in}}(u)\cap N_{\text{out}}(u)|}{|N_{\text{in}}(u)\cup N_{\text{out}}(u)|}$, with 1 representing fully bidirectional ties and 0 representing entirely unidirectional ties \\
+    1A   & Number of 1-hop alters of $u$ \\
+    Dens & Density of the ego-network, $\frac{L}{deg(u)(deg(u)-1)}$, where $L$ is the number of edges among alters, and $deg(u)$ is number of one-level alters \\
+    2A   & Number of 2-hop alters of $u$ \\
+    2I   & Average in-degree of two-level alters \\
+    2O   & Average out-degree of two-level alters \\
+    PR   & PageRank score of node $u$ \\
+    \hline
+  \end{tabular}
+\end{table}
+
+\textbf{Role hierarchical clustering.} To support multiscale role-centric abstraction, we cluster all roles from all snapshots across time slicing levels using a dual-phase strategy that improves both efficiency and accuracy. To handle large data, we first apply MiniBatch K-Means to produce fine-grained initial clusters, which accelerates computation by updating centroids with small random subsets rather than the full dataset. Building on these initial clusters, we then perform hierarchical clustering to generate multiscale groupings. Consistent with our time slicing method, roles at level \(h\) are clustered into approximately \(2^h\) groups.
+
+\subsection{Granularity Assessment}
+\label{sec:quantification}
+
+Jung et al.~\cite{jung2023monetexplorer} proposed three metrics—motif fidelity, motif stability, and motif clusterness—to evaluate the granularity of time slicing. We extend these metrics to assess different analysis granularities, defined by combinations of temporal and substructural abstraction granularities.
+
+\textbf{Discretization fidelity} measures the degree to which local topological information in bottom-level snapshots is preserved at coarser temporal granularities, where higher values indicate less information loss introduced by time slicing. 
+As snapshot sequences may have different lengths across levels, we employ FastDTW~\cite{salvador2007toward} with the biased WL kernel distance to align higher-level sequences with the bottom-level sequence. 
+For each level, $d_f$ is defined as the resulting DTW distance, followed by inversion and min–max normalization across all levels.
+
+\textbf{Discretization stability} evaluates the temporal smoothness of snapshot sequences, with higher values indicating more stable evolution. 
+By minimizing fluctuations between adjacent snapshots, this metric reflects the reduction of temporal noise~\cite{jung2023monetexplorer}. 
+For each level, $d_s$ is defined as the average biased WL kernel distance between consecutive snapshots, followed by inversion and min–max normalization.
+
+\textbf{Discretization clusterness} quantifies how well snapshots form distinct temporal states, where better-separated clusters facilitate the identification of evolution patterns~\cite{masuda2019detecting}. 
+At each level, we cluster snapshots using HDBSCAN with the biased WL kernel distance and evaluate clustering quality using the S\_Dbw index~\cite{halkidi2001clustering}. 
+The clusterness score is defined as $d_c = 1 - \text{norm}(S\_Dbw)$, where $\text{norm}(\cdot)$ denotes min–max normalization across all levels.
+
+\textbf{Role fidelity} measures the extent to which role information at the finest temporal granularity is preserved after aggregation, with higher values indicating lower abstraction loss. 
+To capture snapshot similarity from a role-centric perspective, we construct a role composition signature for each snapshot. 
+Following Pienta et al.~\cite{pienta2017vigor}, we compute four statistical moments (mean, variance, skewness, and kurtosis) for each role feature, yielding a $4 \times N$-dimensional signature, where $N$ is the role feature dimension. 
+We then apply DTW to align higher-level sequences with the bottom-level sequence based on these signatures. 
+For each level, $r_f$ is defined as the resulting DTW distance, followed by inversion and min–max normalization.
+
+\textbf{Role stability} evaluates the temporal smoothness of role composition over time, where higher values indicate more consistent role transitions. 
+For each level, $r_s$ is defined as the average Euclidean distance between role composition signatures of adjacent snapshots, followed by inversion and min–max normalization.
+
+\textbf{Role clusterness} assesses the quality of role groupings at each abstraction level, where well-separated role clusters facilitate the identification of role transition patterns. 
+Roles are obtained by clustering all role representations across snapshots and temporal levels. 
+For each time slicing and role-centric abstraction level, we extract the corresponding roles and evaluate clustering quality using the S\_Dbw index. 
+The resulting score is normalized in the same manner as $d_c$ and denoted as $r_c$.
+
+
+\begin{figure*}[t!]
+  \centering
+  \includegraphics[width=\linewidth, alt={Overview of MulNetVis.}]{figs/img/facebook.pdf}
+  \caption{%
+MulNetVis supports multiscale, heterogeneous exploration of temporal and substructural evolution in dynamic networks through eight coordinated views. The Navigation View (A) provides an integrated temporal–substructural overview and supports adaptive granularity selection. The Time Slicing View (B) visualizes nonuniform multiscale time slicing to reveal salient temporal patterns. The Role View (C), Role Reduction View (D), Network Evolution View (E), and Role Evolution View (H) jointly support analysis of heterogeneous evolution of the whole network and substructures across temporal granularities. The Feature Distribution View (F) and Network View (G) facilitate multiscale exploration from overview to detail.
+  }
+  \label{fig:facebook}
+\end{figure*}
+
+\section{Visualization}
+Based on the aforementioned design goals, we developed the visualization system (\cref{fig:facebook}), which consists of eight coordinated views. We demonstrate tasks using the Facebook dataset~\cite{viswanath2009evolution}, which records wall posts exchanged between users in the City of New Orleans over 1,560 days, comprising 45.8K nodes and 856K directed edges. Each node corresponds to a user, and each directed edge represents a wall post from one user to another.
+
+
+\subsection{Navigation View}
+The Navigation View supports informed granularity selection by summarizing temporal and substructural properties across multiple analysis levels (\textbf{G1}). Based on MoNetExplorer’s~\cite{jung2023monetexplorer} auto-recommendation design, we implement a sortable table that displays, for each granularity, the number of time slices, the number of roles, and the six quality metrics (Section~\ref{sec:quantification}). Each metric is visualized as a horizontal bar chart, where both bar length and color intensity are proportional to the normalized metric value. Longer and darker bars indicate higher metric values. By clicking the column header of each metric, users can specify which metrics to include in the overall score, triggering an instant re-ranking of the table.
+\begin{figure}[!t]
+  \centering
+  \includegraphics[width=\linewidth,keepaspectratio, trim=0.5mm 0.5mm 0.5mm 0.5mm, clip, alt={}]{figs/img/fb4.pdf}
+  \caption{%
+  The Time Slicing View (A) reorders snapshots by clustering, revealing similarities between July and September 2008. The Network Evolution View (B) shows role composition shifts, possibly linked to the "New Facebook."
+}
+  \label{fig:fb4}
+\end{figure}
+\subsection{Time Slicing View}
+The Time Slicing View employs a rectangle-based timeline to visualize nonuniform time slicing results, exposing global temporal trends, fluctuations, and structurally similar time slices under a given slicing strategy (\textbf{G2}).
+
+The horizontal axis represents the temporal sequence and the vertical axis encodes biased WL kernel distance between consecutive snapshots. Each rectangle corresponds to a time slice, with its width representing the time duration of that slice and its height indicating the range between the minimum and maximum WL distances within that slice. To support the identification of similar network states, we apply HDBSCAN to cluster structurally similar time slices, and the color of each rectangle indicates its cluster membership (with gray denoting noise slices). This view also supports snapshot reordering based on clustering results, enabling users to efficiently identify structurally similar but temporally non-adjacent time slices. As illustrated in \cref{fig:fb4}A, for example, snapshots from July 2008 and September 2008 are revealed to exhibit similar structural characteristics.
+
+
+
+\subsection{Role View}
+The Role View encodes the structural characteristics of role clusters using a compact matrix-based representation (\textbf{G3}). Each row represents a role cluster. The first column’s cells are filled with the color corresponding to the clusters. The remaining columns depict feature metrics of the role (Section~\ref{sec:roleabstraction}). Within these cells, the length and color intensity of the bar encode the corresponding metric, where longer and darker bars correspond to larger metric values. The order of clusters is determined by similarity, with adjacent rows indicating similar feature distributions between role clusters.
+
+\subsection{Role Reduction View}
+The Role Reduction View projects high-dimensional role representations into a 2D space to support intuitive inspection and validation of role clustering results (\textbf{G3}). Given its ability to preserve local structures in high-dimensional data, we employ t-SNE to project the finest-grained roles onto a two-dimensional space. Each point on this plane represents a role, with colors encoding clusters consistent with the Role View. This method facilitates clearer understanding and validation of role relationships and clustering effectiveness.
+
+
+\subsection{Network Evolution View}
+The Network Evolution View provides a global overview of whole-network evolution in the context of substructural organizations, revealing similar, recurring, and anomalous patterns (\textbf{G3}).
+
+In this view, we adopt a pixel-based visualization to encode the temporal composition of substructural organizations, following the design principles of Cakmak et al.~\cite{cakmak2022motif}. In the default layout, the horizontal axis encodes time, while each pixel-bar represents the substructural composition of a snapshot. Leveraging the role-centric abstraction, each snapshot is encoded as a vector of role cluster occurrence frequencies, with the cluster order aligned to the Role View for cross-view consistency. Role occurrence frequencies are normalized using Z-score normalization followed by tanh scaling to map values to [-1, 1], where positive and negative values indicate above- and below-average occurrences, respectively. A colorblind-safe divergent color scheme with perceptually linear transitions from red (below-average) through white (average) to blue (above-average) is employed.
+
+Consistent with classic pixel-based designs~\cite{cakmak2022motif}, this view supports interactive reordering and aggregation of rows/columns to expose patterns across dimensions. Specifically, users can select statistical metrics (similarity, mean, median, min/max, standard deviation, variance) via a dropdown menu to dynamically reorder rows/columns. Furthermore, when the horizontal axis in the Time Slicing View is reordered, this view is updated accordingly. As shown in \cref{fig:fb4}B, it further reveals the role compositions of July 2008 and September 2008. The shifts in role composition during these two periods could be linked to the introduction of the "New Facebook".
+
+
+\subsection{Feature Distribution View}
+The Feature Distribution View supports structure-driven role filtering by visualizing the distributions of role features (\textbf{G4}). For each role feature, the view displays a bar chart, where the horizontal axis bins feature values into ranges and the vertical axis encodes the number of roles within each bin. Bar colors are consistent with the corresponding feature encodings in the Role View to maintain visual coherence across views. Interactive brushing on feature value ranges dynamically filters the roles shown in linked views, including the Role View, Network Evolution View, and Role Evolution View, enabling coordinated exploration from feature distributions to role- and evolution-level details.
+
+\subsection{Network View}
+The Network View reveals the local topological context of selected roles by visualizing first-order neighborhoods and supporting node-level inspection (\textbf{G4}). A Kamada–Kawai force-directed layout is employed to optimize the neighborhood layout and clearly convey connectivity patterns. Nodes corresponding to the selected roles are shown as green circles, while gray circles represent their first-order neighbors. Node size encodes in-degree, and color intensity represents relationship balance. Nodes can be interactively filtered based on feature value ranges specified in the Feature Distribution View, and neighborhoods are highlighted on hover to facilitate local inspection. Selecting a node in this view updates the Role Evolution View to display its corresponding evolutions.
+
+\subsection{Role Evolution View}
+The Role Evolution View enables comparison of role evolution patterns for a selected node and its similar counterparts across multiple temporal granularities (\textbf{G3}).
+\begin{figure}[!t]
+  \centering
+  \includegraphics[width=\linewidth,keepaspectratio,  alt={}]{figs/img/role.pdf}
+  \caption{%
+  The visual design of the Role Evolution View.
+}
+  \label{fig:role}
+\end{figure}
+
+To efficiently summarize role evolution sequences of varying lengths, we adopt a state-of-the-art sequence alignment method~\cite{guo2018visual}. Specifically, we initialize the process by constructing a mean sequence from the longest role evolution sequence and iteratively align the remaining sequences to it using FastDTW. Distances between role evolution sequences are computed using Euclidean distance. The resulting mean vector representation is denoted as \(V=(\bar{r_1}, \bar{r_2}, \ldots, \bar{r_n})\), and the process continues until all sequences are merged. This alignment procedure has a time complexity of \(O(M(n-1))\), where $M$ denotes the number of sequences and $n$ the length of the mean sequence.
+
+In this view, the horizontal axis represents the aligned mean sequence. The top row displays the role evolution sequence of the selected node, while the subsequent rows show the role evolution sequences of its top 50 most similar nodes. Each role state is visualized as a colored rectangle, with color encoding role cluster membership, consistent with the Role View. To emphasize the focus of analysis, the rectangles corresponding to the selected node and its similar nodes are highlighted with a black stroke (\cref{fig:role}B). To facilitate rapid summarization of role evolution patterns, the view integrates DBSCAN clustering. After clustering, each row represents a representative role evolution pattern of a cluster (\cref{fig:role}A). At each temporal position, the glyph corresponds to the role whose feature values are closest to the mean of the roles aligned at that position within the cluster. Clicking a row expands it to reveal the detailed role evolutions of all nodes belonging to the selected cluster.
+
+
+\section{Evaluation}
+In this section, we first evaluate the effectiveness of the proposed multiscale nonuniform time slicing method. After that, we show the usefulness of MulNetVis based on two case studies.
+
+\subsection{Evaluation on Time Slicing}
+Our method employs multiscale nonuniform time slicing. Recent related work focuses only on either single-scale nonuniform slicing or multiscale uniform slicing. Therefore, comparisons are conducted separately with these two types of methods.
+\begin{figure*}[!t]
+  \centering
+  \includegraphics[width=\textwidth, keepaspectratio,  alt={}]{figs/img/compare.pdf}
+  \caption{%
+Results of four nonuniform time slicing methods on the Rugby dataset. Above each snapshot, $Si$ denotes the $i$-th snapshot and $N(E)$ is the number of edges. Green boxes indicate snapshots from sparse tweet periods, and red boxes indicate snapshots from dense tweet periods.
+}
+  \label{fig:compare}
+\end{figure*}
+
+For comparisons with single-scale nonuniform slicing methods, we evaluate against three state-of-the-art methods: Jaccard Similarity-based slicing (JS)~\cite{ccolak2021aggregating}, visual complexity-based slicing (VS)~\cite{wang2019nonuniform}, and combinational slicing (CS)~\cite{jung2024combinational}. JS forms snapshots by aggregating adjacent segments based on link-set Jaccard similarity. VS defines visual complexity as snapshot edge density, distributing complexity evenly across snapshots through histogram equalization. CS combines both methods: it first uses VS to create fine-grained slices, then employs JS to aggregate them. Following Wang et al.~\cite{wang2019nonuniform} and Jung et al.~\cite{jung2024combinational}, who introduced the Rugby dataset~\cite{simonetto2017drawing}, we adopt this benchmark for consistent evaluation. The dataset contains over 3,000 tweets (edges) involving the 12 Guinness Pro12 teams (nodes), each annotated with the involved teams and a timestamp. For fairness, all time slicing methods produce the same number of snapshots. Since JS cannot specify the number of snapshots in advance, we first apply it, yielding 23 snapshots, and set this as the target for the other methods. \cref{fig:compare} shows the resulting snapshots. Node positions are fixed across snapshots, and edge color intensity encodes edge frequency. At the top, $Si$ denotes the $i$-th snapshot and $N(E)$ is the number of edges. Green boxes indicate slices from sparse tweet periods, and red boxes indicate slices from dense tweet periods. As illustrated in \cref{fig:compare}, JS generates edge-dense snapshots during tweet-dense intervals but produces noisy snapshots during sparse intervals. In contrast, VS yields a more uniform distribution of tweets across snapshots but fails to capture prominent topological changes, particularly during later high-activity periods, as it primarily balances edge counts rather than emphasizing topological changes. CS strikes a compromise by assigning more snapshots to dense intervals and fewer to sparse ones, though it still produces some snapshots that are either overly dense or overly sparse. In comparison, our method merges early sparse periods to reduce noise while adaptively splitting later dense periods to more effectively capture topological dynamics.
+
+\begin{figure*}[!t]
+  \centering
+  \includegraphics[width=\textwidth, keepaspectratio, trim=0.5mm 0.5mm 0.5mm 0.5mm, clip, alt={}]{figs/img/enron.pdf}
+  \caption{%
+(a) MoNetExplorer’s recommendations for the Enron dataset. (b) Our recommendations, with the second-best result matching MoNetExplorer’s. (c) In the Time Slicing View, red boxes indicate low-volatility periods with longer intervals, while black boxes indicate high-volatility periods with finer intervals.
+}
+  \label{fig:enron}
+\end{figure*}
+
+For comparison with multiscale uniform slicing methods, Jung et al.~\cite{jung2023monetexplorer} recently proposed MoNetExplorer, an interactive visualization system that enables user-driven selection of time intervals. Their method employs multiscale uniform slicing and introduces three quantitative metrics to evaluate performance across different granularities. In a case study on the Enron dataset~\cite{enrondata}, their recommended results are shown in \cref{fig:enron}a, where column $W$ denotes the slice interval and $N$ the number of slices. Using the same dataset (\cref{fig:enron}b), our method first recommends 64 slices with an average interval of 15 days, further differentiated into 21 days during stable periods (biased WL kernel distance below the mean) and 11 days during volatile periods (biased WL kernel distance above the mean). Our second recommendation yields 32 slices with an average interval of 31 days, further differentiated into 44 days in stable periods and 23 days in volatile periods. Notably, this second recommendation matches MoNetExplorer’s second-best result exactly, and MoNetExplorer’s top five recommended granularities also fall between 32 and 64 slices, consistent with our findings. Moreover, as revealed in the Time Slicing View (\cref{fig:enron}c), our method adaptively applies coarse-grained slicing during stable periods and fine-grained slicing during volatile periods, effectively unraveling the topological dynamics.
+
+\subsection{Use Cases}
+We recruited two domain experts (E1 and E2) with expertise in complex network analysis to explore our system using two real-world datasets: Facebook~\cite{viswanath2009evolution} and Reddit~\cite{kumar2018community}. E1 is a faculty member, and E2 is a graduate researcher affiliated with our university’s Complex Network Research Center.
+
+\subsubsection{Facebook}
+E1 began by examining the top-ranked level in the Navigation View (\cref{fig:facebook}A), as suggested by the six quality metrics (\textbf{G1}). He then inspected the corresponding time slicing in the Time Slicing View (\cref{fig:facebook}B) and noticed a clear shift in temporal granularity: before June 2006, the network evolved smoothly and was represented using coarse slices, whereas after June 2006, increased structural volatility led to finer-grained slicing (\textbf{G2}). E1 associated this transition with the rapid growth of Facebook users starting in May 2006, which introduced substantial structural change.
+
+To assess the substructural abstraction at this level, E1 examined the Role Reduction View (\cref{fig:facebook}D), where densely clustered points suggested coherent role groupings. He then turned to the Role View (\cref{fig:facebook}C) to interpret role characteristics (G3). Through this view, E1 identified four interpretable roles. R1 is characterized by low attractiveness and relationship balance, with interactions dominated by one-way connections to active users, corresponding to ordinary followers. R2 exhibits high relationship balance and PageRank but small ego networks with sparse alter connectivity, representing small-clique cores. R3 shows the highest degree, attractiveness balance, neighborhood size, and PageRank, combined with weak neighbor cohesion, corresponding to celebrity-like hubs. R4 features the highest ego density and strong two-level connectivity, indicating members of cohesive communities.
+
+Using the Network Evolution View (\cref{fig:facebook}E), E1 explored how these roles evolved over time (G2, G3). He observed that all roles increased in frequency during Facebook’s growth phase, with R3 emerging first (\cref{fig:facebook}E1), followed by R4 (\cref{fig:facebook}E2), and later R2 and R1—reflecting a common adoption pattern in online social networks where influencers and early adopters lead, followed by regular users. Toward the end of 2007, E1 noticed a pronounced decline across roles, particularly for R4 (\cref{fig:facebook}E3), which he attributed to the Beacon privacy controversy. In later periods, while most roles gradually recovered, R3 exhibited notable fluctuations (\cref{fig:facebook}E4), suggesting instability in celebrity-like influence. E1 connected this pattern to the introduction of the “People You May Know” feature in 2008, which encouraged local connectivity and reduced reliance on highly influential nodes.
+\begin{figure*}[!t]
+  \centering
+  \includegraphics[width=0.95\textwidth,keepaspectratio, trim=0.5mm 0.5mm 0.5mm 0.5mm, clip, alt={}]{figs/img/fb2.pdf}
+  \caption{%
+  Comparison of (a) our role-based and (b) motif-based pixel overviews. Both reveal a major substructural change around May 2006, while our method additionally highlights anomalies emerging in late 2007.
+}
+  \label{fig:fb}
+\end{figure*}
+
+E1 compared these observations (\cref{fig:fb}) with a motif-based analysis method proposed by Cakmak et al.~\cite{cakmak2022motif}. While both methods identified the May 2006 structural shift, our approach offered unique advantages. The motif-based results showed a scarcity of 13-triads (fully connected triangles), which our role analysis explained by revealing that most roles (except R4) lack strong connectivity among neighbors. Furthermore, by employing a multiscale time slicing method, our method more clearly captures anomalies emerging at the end of 2007. In addition, role-based local structural exploration provides further insights into the anomalous evolution of R3, offering a higher-level perspective beyond motif counts alone.
+
+
+\begin{figure}[!t]
+  \centering
+  \includegraphics[width=\linewidth, trim=0.5mm 0.5mm 0.5mm 0.5mm, clip, alt={}]{figs/img/fb3.pdf}
+  \caption{%
+   Two nodes in Cluster 2 under coarse (slice 16) and fine-grained (slice 32) time slicing shared highly similar evolution trends, while finer slicing revealed additional short-term variations.
+}
+  \label{fig:fb3}
+\end{figure}
+
+Intrigued by the evolution of R3 (G3), E1 selected the corresponding pixel in May 2006, prompting the Network View to display all nodes in this role cluster (\cref{fig:facebook}G). A particularly dark-colored node, indicating high attractiveness, drew his attention (\textbf{G4}). After selecting it, the Role Evolution View showed the temporal evolutions of this node and its 50 most similar peers, which were clustered into four representative patterns (\cref{fig:facebook}H). E1 observed distinct role evolution behaviors across clusters. Cluster 1 frequently transitioned among R1, R3, and R4 early on but stabilized to R1 after the Facebook user expansion, whereas Cluster 2 showed the opposite trend. The remaining clusters exhibited largely stable behaviors. Motivated by these differences, E1 focused on Cluster 1 and examined the detailed role evolution of its nodes (\cref{fig:fb3}). He noted that two nodes under coarse (slice 16) and fine-grained (slice 32) time slicing shared highly similar evolution trends, while finer slicing revealed additional short-term variations. Based on this analysis, E1 concluded that MulNetVis enables joint analysis of role evolution with different temporal rates—an insight difficult to obtain with single-scale slicing.
+
+
+
+\subsubsection{Reddit}
+The Reddit dataset~\cite{kumar2018community} contains hyperlink relationships between subreddits over 1,217 days, with 55K nodes and 858K directed edges. Nodes represent subreddits, and directed edges indicate cross-subreddit hyperlinks.
+\begin{figure*}[!t]
+  \centering
+  \includegraphics[width=\textwidth, trim=0.5mm 0.5mm 0.5mm 0.5mm, clip, alt={}]{figs/img/reddit.pdf}
+  \caption{%
+  (A) The pronounced fluctuations in July–August 2015 coincided with "AMAgeddon." (B) R2 shows sharp spikes during three key election phases: the beginning of the election cycle in August 2016, the conclusion of voting in November 2016, and the February 2017 inauguration with the introduction of the "bathroom bill." (C) High-indegree subreddits in the Network View were filtered using the brushing interaction in the Feature Distribution View.
+  }
+  \label{fig:reddit}
+\end{figure*}
+
+
+E2 first ranked candidate levels in the Navigation View using the six metrics and selected the top-ranked level for exploration (\textbf{G1}). In the Time Slicing View, E2 observed pronounced fluctuations across the timeline, with the strongest volatility appearing in July–August 2015 (\cref{fig:reddit}A, \textbf{G2}). E2 associated this period with the “AMAgeddon” event, during which many subreddits were set to private in protest following internal management changes and broader concerns about platform governance.
+
+E2 then examined the four subreddit roles in the Role View (\textbf{G3}). R1 had the highest out-degree, lowest relationship balance, and low ego density, indicating broadcast hubs that disseminate news or official announcements; they were the most prevalent. R2 had the highest in-degree, attractiveness balance, and PageRank but low relationship balance and ego density, suggesting centralized authority or popular subreddits that attract external links yet keep weak neighbor ties. R3 had high relationship balance but small 1- and 2-hop neighborhoods, reflecting niche subreddits with strong internal ties but limited outward reach. R4 had the highest ego density and largest 2-hop neighborhood but relatively low PageRank, indicating cohesive community subreddits that tightly connect neighbors and coordinate domain-specific discussions, with strong potential for growth.
+
+\begin{figure}[!t]
+  \centering
+  \includegraphics[width=\linewidth,height=0.7\textheight,keepaspectratio, trim=0.5mm 0.5mm 0.5mm 0.5mm, clip, alt={}]{figs/img/rd2.pdf}
+  \caption{%
+ (A) Four distinct role evolution patterns. (B) The evolution of \textit{SandersForPresident} was similar to that of \textit{the\_donald}, but \textit{SandersForPresident} more frequently occupied the popular subreddit role (R2) in the early stages, whereas \textit{the\_donald} rose sharply after the election week and remained dominant thereafter.
+}
+  \label{fig:rd2}
+\end{figure}
+
+Using the Network Evolution View, E2 explored how these roles evolved over time (\textbf{G3}). During the AMAgeddon period, all roles exhibited noticeable declines, with the most significant drop observed in R2, reflecting disruptions among popular subreddits. In contrast, during the 2016 U.S. presidential election, R4 appeared more frequently, while R2 showed sharp frequency spikes during three key phases: the beginning of the election cycle in August 2016, the conclusion of voting in November 2016, and the presidential inauguration in February 2017 accompanied by the introduction of the “bathroom bill” (\cref{fig:reddit}B).
+
+To further inspect these patterns, E2 selected the R2 pixel in August 2016, revealing all corresponding nodes in the Network View. He filtered high–in-degree subreddits using the Feature Distribution View (\cref{fig:reddit}C, \textbf{G4}) and then clicked the political subreddit \textit{the\_donald}. The Role Evolution View updated accordingly, and four clustered evolution patterns were revealed (\cref{fig:rd2}A). Cluster 1 remained in the popular R2 role (green) for much of the early period, but later shifted predominantly to the ordinary R1 role (blue). Cluster 2 showed strong activity as R2 during mid-2015 and throughout the U.S. presidential election. Cluster 3 and Cluster 4 both remained in R2 for extended periods, with the distinction that the third was active only in the earlier stages. Focusing on the cluster most closely associated with the election, E2 compared the evolutions of \textit{the\_donald} and \textit{SandersForPresident} (\cref{fig:rd2}B). He observed that \textit{SandersForPresident} occupied the popular role more frequently in the early stages of the election, whereas \textit{the\_donald} rose sharply after the election week and remained dominant thereafter. This contrast closely mirrors real-world political dynamics. Based on these observations, E2 concluded that MulNetVis effectively captures the evolution of substructures in large-scale dynamic networks and supports meaningful interpretation of real-world events through role-centric, multiscale analysis.
+
+\section{Discussion}
+\subsection{Multiscale Time Slicing}
+The proposed multiscale adaptive time slicing method supports analysis across diverse network sizes and tasks, aligning with the philosophy of multiscale exploration~\cite{cakmak2020multiscale} while avoiding reliance on a single fixed interval~\cite{jung2023monetexplorer}. It introduces a biased kernel-based hierarchical nonuniform slicing strategy to balance local topological changes across temporal granularities. Combined with the Role Evolution View, this approach enables simultaneous exploration of role evolutions at multiple temporal granularities. A current limitation is the lack of user-customizable topology-driven slicing due to the computational cost of substructure search. Future work will focus on developing more efficient topology-driven slicing methods to better accommodate heterogeneous temporal and structural network evolution.
+
+
+\subsection{Multiscale Substructural Abstraction}
+To overcome the limitations of predefined motif types~\cite{cakmak2022motif} and community classifications~\cite{linhares2022largenetvis}, we propose a multiscale role-centric substructural abstraction method for analyzing dynamic network evolution. Building on prior work that interprets ego-networks as structural roles~\cite{xie2022roleseer,fu2021dyegovis,kuo2024spreadline,wu2015egoslider}, our method hierarchically clusters ego-networks into semantic role groups using interpretable role representations. Case studies demonstrate the effectiveness of this approach. A current limitation is the assumption that each ego-network belongs to a single role cluster, whereas real-world networks often exhibit overlapping roles. Future work will explore multi-label role modeling to better capture such multiplex behaviors.
+
+\subsection{Quality Evaluation of Snapshot}
+We extend the snapshot quality metrics proposed by Jung et al.~\cite{jung2023monetexplorer} by evaluating fidelity, stability, and clusterness from both temporal and substructural perspectives, providing quantitative support for granularity selection. In our case study, participants ranked candidate granularities using the Navigation View in a manner consistent with prior findings. While the dual-perspective evaluation improves cross-task applicability, assessing snapshot quality remains challenging due to task- and data-dependent criteria. Future work will involve broader user studies to further refine the evaluation framework.
+
+\subsection{Scalability of MulNetVis}
+The scalability of MulNetVis depends on both its analytical methods and visualization design. For time slicing, biased kernel similarities between adjacent snapshots are computed at the finest granularity with a complexity of $O(h(n+m))$, where $n$ and $m$ denote the numbers of nodes and edges, and $h$ the iteration count. Histogram equalization then generates multiscale snapshot sequences with negligible overhead. For role-centric abstraction, role representations are clustered using a dual-phase strategy combining MiniBatch K-Means and hierarchical clustering to ensure scalability.
+
+Scalability is further supported by the visualization design, particularly in the Network Evolution View and Role Evolution View. For large datasets, readability issues in pixel-based views are mitigated through reordering and aggregation strategies, while clustering is used to reduce visual clutter in role evolution analysis. Nevertheless, effectively revealing complex internal dynamics across diverse local structures remains challenging. Future work will explore learning-based models and event sequence visualization techniques to further improve the interpretability of multiscale evolutionary patterns.
+
+\section{Conclusion}
+In this paper, we present MulNetVis, a visual analytics framework for providing integrated multiscale summaries of large-scale dynamic networks. MulNetVis couples adaptive multiscale time slicing with interpretable role-centric substructural abstraction, enabling analysts to explore heterogeneous temporal patterns and evolving substructures from overview to detail. To support informed granularity selection, we further introduce a set of quality metrics that assess fidelity, stability, and clusterness from both temporal and substructural perspectives. We implement these techniques in an interactive system with coordinated views that facilitate multiscale temporal-substructural overview, holistic evolution tracking, and cross-scale role evolution analysis. Quantitative comparisons and real-world case studies demonstrate that MulNetVis more effectively reveals internal topological dynamics and supports meaningful interpretation of evolving substructures than existing approaches. Future work will focus on developing real-time, user-customizable topology-driven time slicing methods, as well as optimizing the snapshot quality assessment framework.
+
+
+%% 参考文献
+\bibliographystyle{elsarticle-num}
+\bibliography{template}
+
+
+\end{document}

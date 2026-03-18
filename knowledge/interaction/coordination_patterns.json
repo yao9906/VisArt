@@ -1,0 +1,88 @@
+[
+    {
+        "id": "COORD-001",
+        "name": "Brushing & Linking (Highlight)",
+        "description": "Selecting data in one view highlights corresponding data in all linked views.",
+        "condition": "Multiple views share same data schema",
+        "implementation": {
+            "mechanism": "d3.dispatch('brush') → shared event bus",
+            "unselected_behavior": "reduce opacity to α<0.1 + grayscale",
+            "selected_behavior": "full opacity + original color",
+            "reset": "click outside brush area → restore all to 100%"
+        },
+        "visual_rules": [
+            "Use consistent 'Selection Color' across all views (e.g., bright orange/blue)",
+            "Preserve spatial position of unselected items for context"
+        ],
+        "source": "Heer & Shneiderman 2012; Roberts 2007"
+    },
+    {
+        "id": "COORD-002",
+        "name": "Cross-Filtering (Bidirectional)",
+        "description": "Brushing a histogram aggregate simultaneously filters the main scatterplot/map AND updates other histograms.",
+        "condition": "Multi-dimensional dataset with multiple coordinated views",
+        "implementation": {
+            "mechanism": "Crossfilter-style dimension intersection",
+            "display": "Show 'Global' (background, gray) and 'Local' (foreground, colored) distributions simultaneously",
+            "boolean_logic": "AND intersection of all active brushes"
+        },
+        "performance": {
+            "debounce": "100-300ms when N > 5000"
+        },
+        "source": "Weaver 2004; Heer & Shneiderman 2012"
+    },
+    {
+        "id": "COORD-003",
+        "name": "Drill-Down (Unidirectional)",
+        "description": "Clicking on a category in an overview view filters a detail view to show only that category's data.",
+        "condition": "Overview → Detail view hierarchy",
+        "implementation": {
+            "mechanism": "On click → filter detail data → animate enter/exit via selection.join()",
+            "navigation": "breadcrumb trail showing drill-down path"
+        },
+        "applicable_idioms": [
+            "bar → scatterplot",
+            "treemap → bar",
+            "choropleth → histogram"
+        ],
+        "source": "Shneiderman 1996; Elmqvist et al. 2008"
+    },
+    {
+        "id": "COORD-004",
+        "name": "Focus + Context (Spatial)",
+        "description": "A miniature overview shows the full dataset while the main view shows a zoomed-in detail area.",
+        "condition": "Large spatial or temporal dataset with viewport constraints",
+        "implementation": {
+            "focus": "main view with full detail",
+            "context": "miniature view (height < 20% of main) with d3.brushX controlling focus x.domain",
+            "minimap": "overview rectangle indicating current viewport position"
+        },
+        "applicable_idioms": [
+            "time series",
+            "geographic maps",
+            "large networks"
+        ],
+        "source": "Cockburn et al. 2008"
+    },
+    {
+        "id": "COORD-005",
+        "name": "Spatial-Statistical Linking",
+        "description": "Map pan/zoom dynamically filters linked statistical charts to show data for visible features only.",
+        "condition": "Geospatial map + statistical chart combination",
+        "implementation": {
+            "mechanism": "On map viewport change → compute visible features → update chart data",
+            "display": "Chart always reflects the geographic region currently in view"
+        },
+        "source": "Andrienko & Andrienko 2006"
+    },
+    {
+        "id": "COORD-006",
+        "name": "Shared Scale Synchronization",
+        "description": "Multiple views sharing the same data axis keep their scales synchronized during zoom/pan.",
+        "condition": "Views share identical axis/scale",
+        "implementation": {
+            "mechanism": "d3.dispatch event synchronizes domain changes across all matching scales"
+        },
+        "source": "Roberts 2007"
+    }
+]

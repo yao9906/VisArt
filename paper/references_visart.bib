@@ -1,0 +1,462 @@
+%% Complete references for VisArt TVCG paper
+%% Includes all citations from both paper parts
+%%
+%% ======== Citation Number → BibTeX Key Mapping ========
+%%
+%% [1]  LIDA                          → dibia2023lida
+%% [2]  LightVA                       → li2024lightva
+%% [3]  ProactiveVA                   → zhao2025proactiveva
+%% [4]  SmartMLVs                     → shu2025smartmlvs
+%% [5]  Chat2Vis                      → maddigan2023chat2vis
+%% [6]  ChartGPT                      → tian2024chartgpt
+%% [7]  Cleveland & McGill 1984       → cleveland1984graphical
+%% [8]  Borland & Taylor 2007         → borland2007rainbow
+%% [9]  WCAG 2.1                      → wcag21
+%% [10] VizLinter                     → chen2022vizlinter
+%% [11] GeoLinter                     → lei2024geolinter
+%% [12] Bostock et al. 2011 (D3)      → bostock2011d3
+%% [13] Shneiderman 1996              → shneiderman1996eyes
+%% [14] NL4DV                         → narechania2020nl4dv
+%% [15] ncNet                         → luo2022ncnet
+%% [16] InsightLens                   → lu2024insightlens
+%% [17] Mackinlay 1986                → mackinlay1986automating
+%% [18] Heer & Bostock 2010           → heer2010crowdsourcing
+%% [19] Ware 2004                     → ware2004information
+%% [20] Draco                         → moritz2018formalizing
+%% [21] Draco 2                       → zeng2023draco2
+%% [22] CompassQL                     → wongsuphasawat2016towards
+%% [23] Dziban                        → lin2020dziban
+%% [24] KG4Vis                        → li2022kg4vis
+%% [25] Kim & Heer 2018               → kim2018assessing
+%% [26] Liu & Heer 2018               → liu2018rainbow
+%% [27] Healey 1996                   → healey1996choosing
+%% [28] Haroz & Whitney 2012          → haroz2012capacity
+%% [29] Marriott et al. 2021          → marriott2021inclusive
+%% [30] Okabe & Ito 2008              → okabe2008color
+%% [31] Ellis & Dix 2007              → ellis2007clutter
+%% [32] Kindlmann & Scheidegger 2014  → kindlmann2014algebraic
+%% [33] McNutt & Kindlmann 2018       → mcnutt2018vislint
+%% [34] Ceneda et al. 2019            → ceneda2019guide
+%% [35] Stevens 1946                  → stevens1946theory  (used in §3.2)
+%% [36] Brehmer & Munzner 2013        → brehmer2013multi
+%% [37] Lin et al. 2013               → lin2013selecting
+%% [38] Brehmer & Munzner 2013        → brehmer2013multi  (same as [36])
+%%
+%% ========================================================
+
+%% ---- Foundation: Perception & Encoding ----
+
+@article{cleveland1984graphical,
+  title={Graphical perception: Theory, experimentation, and application to the development of graphical methods},
+  author={Cleveland, William S and McGill, Robert},
+  journal={Journal of the American Statistical Association},
+  volume={79},
+  number={387},
+  pages={531--554},
+  year={1984}
+}
+
+@article{mackinlay1986automating,
+  title={Automating the design of graphical presentations of relational information},
+  author={Mackinlay, Jock},
+  journal={ACM Transactions on Graphics},
+  volume={5},
+  number={2},
+  pages={110--141},
+  year={1986}
+}
+
+@book{munzner2014visualization,
+  title={Visualization Analysis and Design},
+  author={Munzner, Tamara},
+  year={2014},
+  publisher={CRC Press}
+}
+
+@article{stevens1946theory,
+  title={On the theory of scales of measurement},
+  author={Stevens, Stanley Smith},
+  journal={Science},
+  volume={103},
+  number={2684},
+  pages={677--680},
+  year={1946}
+}
+
+@book{ware2004information,
+  title={Information Visualization: Perception for Design},
+  author={Ware, Colin},
+  year={2004},
+  edition={2nd},
+  publisher={Morgan Kaufmann}
+}
+
+@book{cleveland1985elements,
+  title={The Elements of Graphing Data},
+  author={Cleveland, William S},
+  year={1985},
+  publisher={Wadsworth}
+}
+
+@book{few2012show,
+  title={Show Me the Numbers: Designing Tables and Graphs to Enlighten},
+  author={Few, Stephen},
+  year={2012},
+  edition={2nd},
+  publisher={Analytics Press}
+}
+
+%% ---- Color & Accessibility ----
+
+@article{borland2007rainbow,
+  title={Rainbow color map (still) considered harmful},
+  author={Borland, David and Taylor, Russell M},
+  journal={IEEE Computer Graphics and Applications},
+  volume={27},
+  number={2},
+  pages={14--17},
+  year={2007}
+}
+
+@misc{okabe2008color,
+  title={Color universal design ({CUD}): How to make figures and presentations that are friendly to colorblind people},
+  author={Okabe, Masataka and Ito, Kei},
+  year={2008}
+}
+
+@article{lin2013selecting,
+  title={Selecting semantically-resonant colors for data visualization},
+  author={Lin, Sharon and Fortuna, Julie and Kulkarni, Chinmay and Stone, Maureen and Heer, Jeffrey},
+  journal={Computer Graphics Forum},
+  volume={32},
+  number={3},
+  pages={401--410},
+  year={2013}
+}
+
+@inproceedings{liu2018rainbow,
+  title={Somewhere Over the Rainbow: An Empirical Assessment of Quantitative Colormaps},
+  author={Liu, Yang and Heer, Jeffrey},
+  booktitle={Proceedings of CHI 2018},
+  year={2018}
+}
+
+@misc{wcag21,
+  title={Web Content Accessibility Guidelines ({WCAG}) 2.1},
+  author={{W3C}},
+  year={2018},
+  howpublished={W3C Recommendation}
+}
+
+@article{marriott2021inclusive,
+  title={Inclusive Data Visualization for People with Disabilities: A Call to Action},
+  author={Marriott, Kim and others},
+  journal={IEEE Transactions on Visualization and Computer Graphics},
+  volume={27},
+  number={2},
+  pages={3854--3864},
+  year={2021}
+}
+
+@inproceedings{healey1996choosing,
+  title={Choosing Effective Colours for Data Visualization},
+  author={Healey, Christopher G},
+  booktitle={IEEE Visualization '96},
+  pages={263--270},
+  year={1996}
+}
+
+@article{haroz2012capacity,
+  title={How Capacity Limits of Attention Influence Information Visualization Effectiveness},
+  author={Haroz, Steve and Whitney, David},
+  journal={IEEE Transactions on Visualization and Computer Graphics},
+  volume={18},
+  number={12},
+  pages={2402--2410},
+  year={2012}
+}
+
+%% ---- Task Typology & Interaction ----
+
+@article{brehmer2013multi,
+  title={A multi-level typology of abstract visualization tasks},
+  author={Brehmer, Matthew and Munzner, Tamara},
+  journal={IEEE Transactions on Visualization and Computer Graphics},
+  volume={19},
+  number={12},
+  pages={2376--2385},
+  year={2013}
+}
+
+@inproceedings{amar2005low,
+  title={Low-level components of analytic activity in information visualization},
+  author={Amar, Robert and Eagan, James and Stasko, John},
+  booktitle={IEEE Symposium on Information Visualization},
+  pages={111--117},
+  year={2005}
+}
+
+@inproceedings{shneiderman1996eyes,
+  title={The eyes have it: A task by data type taxonomy for information visualizations},
+  author={Shneiderman, Ben},
+  booktitle={IEEE Symposium on Visual Languages},
+  pages={336--343},
+  year={1996}
+}
+
+@article{heer2012interactive,
+  title={Interactive dynamics for visual analysis},
+  author={Heer, Jeffrey and Shneiderman, Ben},
+  journal={Communications of the ACM},
+  volume={55},
+  number={4},
+  pages={45--54},
+  year={2012}
+}
+
+@inproceedings{heer2010crowdsourcing,
+  title={Crowdsourcing graphical perception: Using {Mechanical Turk} to assess visualization design},
+  author={Heer, Jeffrey and Bostock, Michael},
+  booktitle={Proceedings of the SIGCHI Conference on Human Factors in Computing Systems},
+  pages={203--212},
+  year={2010}
+}
+
+%% ---- Constraint Systems ----
+
+@article{moritz2018formalizing,
+  title={Formalizing visualization design knowledge as constraints: Actionable and extensible models in {Draco}},
+  author={Moritz, Dominik and Wang, Chenglong and Nelson, Greg L and Lin, Halden and Smith, Adam M and Howe, Bill and Heer, Jeffrey},
+  journal={IEEE Transactions on Visualization and Computer Graphics},
+  volume={25},
+  number={1},
+  pages={438--448},
+  year={2018}
+}
+
+@inproceedings{zeng2023draco2,
+  title={{Draco 2}: An extensible platform to model visualization design},
+  author={Zeng, Junran and Moritz, Dominik},
+  booktitle={IEEE VIS Short Papers},
+  year={2023}
+}
+
+@inproceedings{wongsuphasawat2016towards,
+  title={Towards a general-purpose query language for visualization recommendation},
+  author={Wongsuphasawat, Kanit and Moritz, Dominik and Anand, Anushka and Mackinlay, Jock and Howe, Bill and Heer, Jeffrey},
+  booktitle={Proceedings of the Workshop on Human-In-the-Loop Data Analytics (HILDA)},
+  year={2016}
+}
+
+@inproceedings{lin2020dziban,
+  title={Dziban: Balancing agency \& automation in visualization design via anchored recommendations},
+  author={Lin, Halden and Moritz, Dominik and Heer, Jeffrey},
+  booktitle={Proceedings of the CHI Conference on Human Factors in Computing Systems},
+  year={2020}
+}
+
+%% ---- Vis Linting & Quality ----
+
+@article{mcnutt2018vislint,
+  title={Linting for Visualization: Towards a Practical Automated Visualization Guidance System},
+  author={McNutt, Andrew and Kindlmann, Gordon},
+  booktitle={IEEE VIS Workshop on Visualization for AI Explainability},
+  year={2018}
+}
+
+@article{chen2022vizlinter,
+  title={{VizLinter}: A Linter and Fixer Framework for Data Visualization},
+  author={Chen, Qing and others},
+  journal={IEEE Transactions on Visualization and Computer Graphics},
+  volume={28},
+  number={1},
+  year={2022}
+}
+
+@article{lei2024geolinter,
+  title={{GeoLinter}: A Linting Framework for Choropleth Maps},
+  author={Lei, Fan and Fan, Arlen and MacEachren, Alan M and Maciejewski, Ross},
+  journal={IEEE Transactions on Visualization and Computer Graphics},
+  volume={30},
+  number={2},
+  pages={1592--1607},
+  year={2024}
+}
+
+@article{kindlmann2014algebraic,
+  title={An algebraic process for visualization design},
+  author={Kindlmann, Gordon and Scheidegger, Carlos},
+  journal={IEEE Transactions on Visualization and Computer Graphics},
+  volume={20},
+  number={12},
+  pages={2181--2190},
+  year={2014}
+}
+
+@article{huang2009measuring,
+  title={Measuring effectiveness of graph visualizations: A cognitive load perspective},
+  author={Huang, Weidong and Eades, Peter and Hong, Seok-Hee},
+  journal={Information Visualization},
+  volume={8},
+  number={3},
+  pages={139--152},
+  year={2009}
+}
+
+@inproceedings{burch2011evaluation,
+  title={The state of the art in empirical user evaluation of graph visualizations},
+  author={Burch, Michael and Konevtsova, Natalia and Heinrich, Julian and Hoeferlin, Markus and Weiskopf, Daniel},
+  booktitle={EuroVis STARS},
+  year={2011}
+}
+
+@article{ceneda2019guide,
+  title={A review and characterization of progressive visual analytics},
+  author={Ceneda, Davide and others},
+  journal={Informatics},
+  year={2019}
+}
+
+@inproceedings{brath2016typography,
+  title={Using Typography in Visualization},
+  author={Brath, Richard and Banissi, Ebad},
+  booktitle={IEEE VIS Poster},
+  year={2016}
+}
+
+%% ---- Overplotting ----
+
+@article{ellis2007clutter,
+  title={A Taxonomy of Clutter Reduction for Information Visualisation},
+  author={Ellis, Geoffrey and Dix, Alan},
+  journal={IEEE Transactions on Visualization and Computer Graphics},
+  volume={13},
+  number={6},
+  pages={1216--1223},
+  year={2007}
+}
+
+@article{mayorga2013splatterplots,
+  title={Splatterplots: Overcoming Overdraw in Scatter Plots},
+  author={Mayorga, Adrian and Gleicher, Michael},
+  journal={IEEE Transactions on Visualization and Computer Graphics},
+  volume={19},
+  number={9},
+  pages={1526--1538},
+  year={2013}
+}
+
+%% ---- Other Visualization ----
+
+@inproceedings{borgo2012glyph,
+  title={Glyph-based visualization: Foundations, design guidelines, techniques and applications},
+  author={Borgo, Rita and others},
+  booktitle={Eurographics State of the Art Reports},
+  year={2012}
+}
+
+@article{bostock2011d3,
+  title={{D3} data-driven documents},
+  author={Bostock, Michael and Ogievetsky, Vadim and Heer, Jeffrey},
+  journal={IEEE Transactions on Visualization and Computer Graphics},
+  volume={17},
+  number={12},
+  pages={2301--2309},
+  year={2011}
+}
+
+%% ---- LLM + Visualization (2023-2025) ----
+
+@inproceedings{dibia2023lida,
+  title={{LIDA}: A tool for automatic generation of grammar-agnostic visualizations and infographics using large language models},
+  author={Dibia, Victor},
+  booktitle={Proceedings of the 61st Annual Meeting of the ACL},
+  year={2023}
+}
+
+@article{li2024lightva,
+  title={{LightVA}: Lightweight Visual Analytics with {LLM} Agent-Based Task Planning and Execution},
+  author={Zhao, Yuheng and Wang, Junjie and Chen, Siming and others},
+  journal={IEEE Transactions on Visualization and Computer Graphics},
+  year={2024}
+}
+
+@article{zhao2025proactiveva,
+  title={{ProactiveVA}: Proactive Visual Analytics with {LLM}-Based {UI} Agent},
+  author={Zhao, Yuheng and Shu, Xueli and Fan, Liwen and others},
+  journal={IEEE Transactions on Visualization and Computer Graphics},
+  year={2025}
+}
+
+@inproceedings{shu2025smartmlvs,
+  title={{SmartMLVs}: {LLM}-enabled Multiple Linked Views Generation for Interactive Visualization},
+  author={Shu, Xueli and others},
+  booktitle={IEEE Pacific Visualization Symposium (PacificVis)},
+  year={2025}
+}
+
+@article{lu2024insightlens,
+  title={{InsightLens}: Discovering and Exploring Insights from Conversational Contexts in Large-Language-Model-Powered Data Analysis},
+  author={Lu, Luoxuan and others},
+  journal={IEEE Transactions on Visualization and Computer Graphics},
+  year={2024}
+}
+
+@article{maddigan2023chat2vis,
+  title={{Chat2VIS}: Generating data visualizations via natural language using {ChatGPT}, {Codex}, and {GPT-4}},
+  author={Maddigan, Paula and Susnjak, Tanja},
+  journal={IEEE Access},
+  volume={11},
+  pages={45181--45193},
+  year={2023}
+}
+
+@article{tian2024chartgpt,
+  title={{ChartGPT}: Leveraging {LLMs} to generate charts from abstract natural language},
+  author={Tian, Yuan and others},
+  journal={IEEE Transactions on Visualization and Computer Graphics},
+  year={2024}
+}
+
+@article{narechania2020nl4dv,
+  title={{NL4DV}: A toolkit for generating analytic specifications for data visualization from natural language queries},
+  author={Narechania, Arpit and Srinivasan, Arjun and Stasko, John},
+  journal={IEEE Transactions on Visualization and Computer Graphics},
+  volume={27},
+  number={2},
+  pages={369--379},
+  year={2020}
+}
+
+@article{luo2022ncnet,
+  title={Natural language to visualization by neural machine translation},
+  author={Luo, Yuyu and Tang, Nan and Li, Guoliang and others},
+  journal={IEEE Transactions on Visualization and Computer Graphics},
+  volume={28},
+  number={1},
+  pages={217--226},
+  year={2022}
+}
+
+%% ---- Knowledge Graph for Visualization ----
+
+@article{li2022kg4vis,
+  title={{KG4Vis}: A Knowledge Graph-Based Approach for Visualization Recommendation},
+  author={Li, Haotian and Wang, Yong and Zhang, Songheng and Song, Yangqiu and Qu, Huamin},
+  journal={IEEE Transactions on Visualization and Computer Graphics},
+  volume={28},
+  number={1},
+  pages={195--205},
+  year={2022}
+}
+
+@inproceedings{kim2018assessing,
+  title={Assessing Effects of Task and Data Distribution on the Effectiveness of Visual Encodings},
+  author={Kim, Younghoon and Heer, Jeffrey},
+  booktitle={Computer Graphics Forum},
+  volume={37},
+  number={3},
+  pages={157--167},
+  year={2018}
+}
+

@@ -1,0 +1,628 @@
+{
+  "experiment_name": "VisArt Comparative Evaluation",
+  "system_id": "visart_full",
+  "run_id": "visart_full_20260227_154657",
+  "timestamp": "2026-02-27T15:46:57.807711",
+  "task_results": [
+    {
+      "task_id": "TREND-001",
+      "system_id": "VisArt-Full",
+      "prompt": "Show the monthly average temperature trend over the past 5 years",
+      "generated_code": "// Placeholder for TREND-001 with VisArt-Full",
+      "render_success": true,
+      "metrics": [
+        {
+          "metric_id": "CCR",
+          "name": "Constraint Compliance Rate",
+          "value": 1.0,
+          "details": "16/16 hard constraints passed"
+        },
+        {
+          "metric_id": "DQS",
+          "name": "Design Quality Score",
+          "value": 88.0,
+          "details": "Total penalty: 12.0"
+        },
+        {
+          "metric_id": "EMR",
+          "name": "Encoding Match Rate",
+          "value": 0.0,
+          "details": "Chart: ✗, Encodings: 0/2"
+        },
+        {
+          "metric_id": "PE",
+          "name": "Perceptual Effectiveness",
+          "value": 0.0,
+          "details": "Score: 0.0/2"
+        },
+        {
+          "metric_id": "AS",
+          "name": "Accessibility Score",
+          "value": 0.7,
+          "details": "Contrast: 0.7, Checks: 1"
+        },
+        {
+          "metric_id": "RSR",
+          "name": "Rendering Success Rate",
+          "value": 1.0,
+          "details": "Rendered successfully"
+        }
+      ],
+      "lint_report": {},
+      "constraint_report": {},
+      "elapsed_ms": 1,
+      "error": "",
+      "timestamp": "2026-02-27T15:46:57.796623"
+    },
+    {
+      "task_id": "TREND-002",
+      "system_id": "VisArt-Full",
+      "prompt": "Visualize the stock price movement of AAPL over the last year with volume",
+      "generated_code": "// Placeholder for TREND-002 with VisArt-Full",
+      "render_success": true,
+      "metrics": [
+        {
+          "metric_id": "CCR",
+          "name": "Constraint Compliance Rate",
+          "value": 1.0,
+          "details": "16/16 hard constraints passed"
+        },
+        {
+          "metric_id": "DQS",
+          "name": "Design Quality Score",
+          "value": 88.0,
+          "details": "Total penalty: 12.0"
+        },
+        {
+          "metric_id": "EMR",
+          "name": "Encoding Match Rate",
+          "value": 0.0,
+          "details": "Chart: ✗, Encodings: 0/3"
+        },
+        {
+          "metric_id": "PE",
+          "name": "Perceptual Effectiveness",
+          "value": 0.0,
+          "details": "Score: 0.0/3"
+        },
+        {
+          "metric_id": "AS",
+          "name": "Accessibility Score",
+          "value": 0.7,
+          "details": "Contrast: 0.7, Checks: 1"
+        },
+        {
+          "metric_id": "RSR",
+          "name": "Rendering Success Rate",
+          "value": 1.0,
+          "details": "Rendered successfully"
+        }
+      ],
+      "lint_report": {},
+      "constraint_report": {},
+      "elapsed_ms": 0,
+      "error": "",
+      "timestamp": "2026-02-27T15:46:57.798697"
+    },
+    {
+      "task_id": "CAT-001",
+      "system_id": "VisArt-Full",
+      "prompt": "Compare sales revenue across 6 product categories",
+      "generated_code": "// Placeholder for CAT-001 with VisArt-Full",
+      "render_success": true,
+      "metrics": [
+        {
+          "metric_id": "CCR",
+          "name": "Constraint Compliance Rate",
+          "value": 1.0,
+          "details": "16/16 hard constraints passed"
+        },
+        {
+          "metric_id": "DQS",
+          "name": "Design Quality Score",
+          "value": 88.0,
+          "details": "Total penalty: 12.0"
+        },
+        {
+          "metric_id": "EMR",
+          "name": "Encoding Match Rate",
+          "value": 0.0,
+          "details": "Chart: ✗, Encodings: 0/3"
+        },
+        {
+          "metric_id": "PE",
+          "name": "Perceptual Effectiveness",
+          "value": 0.0,
+          "details": "Score: 0.0/2"
+        },
+        {
+          "metric_id": "AS",
+          "name": "Accessibility Score",
+          "value": 0.7,
+          "details": "Contrast: 0.7, Checks: 1"
+        },
+        {
+          "metric_id": "RSR",
+          "name": "Rendering Success Rate",
+          "value": 1.0,
+          "details": "Rendered successfully"
+        }
+      ],
+      "lint_report": {},
+      "constraint_report": {},
+      "elapsed_ms": 0,
+      "error": "",
+      "timestamp": "2026-02-27T15:46:57.799516"
+    },
+    {
+      "task_id": "CAT-002",
+      "system_id": "VisArt-Full",
+      "prompt": "Compare quarterly performance across 4 regions over 2 years",
+      "generated_code": "// Placeholder for CAT-002 with VisArt-Full",
+      "render_success": true,
+      "metrics": [
+        {
+          "metric_id": "CCR",
+          "name": "Constraint Compliance Rate",
+          "value": 1.0,
+          "details": "16/16 hard constraints passed"
+        },
+        {
+          "metric_id": "DQS",
+          "name": "Design Quality Score",
+          "value": 96.0,
+          "details": "Total penalty: 4.0"
+        },
+        {
+          "metric_id": "EMR",
+          "name": "Encoding Match Rate",
+          "value": 0.0,
+          "details": "Chart: ✗, Encodings: 0/3"
+        },
+        {
+          "metric_id": "PE",
+          "name": "Perceptual Effectiveness",
+          "value": 0.0,
+          "details": "Score: 0.0/3"
+        },
+        {
+          "metric_id": "AS",
+          "name": "Accessibility Score",
+          "value": 0.7,
+          "details": "Contrast: 0.7, Checks: 1"
+        },
+        {
+          "metric_id": "RSR",
+          "name": "Rendering Success Rate",
+          "value": 1.0,
+          "details": "Rendered successfully"
+        }
+      ],
+      "lint_report": {},
+      "constraint_report": {},
+      "elapsed_ms": 0,
+      "error": "",
+      "timestamp": "2026-02-27T15:46:57.800169"
+    },
+    {
+      "task_id": "DIST-001",
+      "system_id": "VisArt-Full",
+      "prompt": "Explore the age distribution of survey respondents",
+      "generated_code": "// Placeholder for DIST-001 with VisArt-Full",
+      "render_success": true,
+      "metrics": [
+        {
+          "metric_id": "CCR",
+          "name": "Constraint Compliance Rate",
+          "value": 1.0,
+          "details": "16/16 hard constraints passed"
+        },
+        {
+          "metric_id": "DQS",
+          "name": "Design Quality Score",
+          "value": 92.0,
+          "details": "Total penalty: 8.0"
+        },
+        {
+          "metric_id": "EMR",
+          "name": "Encoding Match Rate",
+          "value": 0.0,
+          "details": "Chart: ✗, Encodings: 0/2"
+        },
+        {
+          "metric_id": "PE",
+          "name": "Perceptual Effectiveness",
+          "value": 0.0,
+          "details": "Score: 0.0/1"
+        },
+        {
+          "metric_id": "AS",
+          "name": "Accessibility Score",
+          "value": 0.7,
+          "details": "Contrast: 0.7, Checks: 1"
+        },
+        {
+          "metric_id": "RSR",
+          "name": "Rendering Success Rate",
+          "value": 1.0,
+          "details": "Rendered successfully"
+        }
+      ],
+      "lint_report": {},
+      "constraint_report": {},
+      "elapsed_ms": 0,
+      "error": "",
+      "timestamp": "2026-02-27T15:46:57.801260"
+    },
+    {
+      "task_id": "DIST-002",
+      "system_id": "VisArt-Full",
+      "prompt": "Compare the salary distributions across 3 departments using violin plots or box plots",
+      "generated_code": "// Placeholder for DIST-002 with VisArt-Full",
+      "render_success": true,
+      "metrics": [
+        {
+          "metric_id": "CCR",
+          "name": "Constraint Compliance Rate",
+          "value": 1.0,
+          "details": "16/16 hard constraints passed"
+        },
+        {
+          "metric_id": "DQS",
+          "name": "Design Quality Score",
+          "value": 88.0,
+          "details": "Total penalty: 12.0"
+        },
+        {
+          "metric_id": "EMR",
+          "name": "Encoding Match Rate",
+          "value": 0.0,
+          "details": "Chart: ✗, Encodings: 0/3"
+        },
+        {
+          "metric_id": "PE",
+          "name": "Perceptual Effectiveness",
+          "value": 0.0,
+          "details": "Score: 0.0/2"
+        },
+        {
+          "metric_id": "AS",
+          "name": "Accessibility Score",
+          "value": 0.7,
+          "details": "Contrast: 0.7, Checks: 1"
+        },
+        {
+          "metric_id": "RSR",
+          "name": "Rendering Success Rate",
+          "value": 1.0,
+          "details": "Rendered successfully"
+        }
+      ],
+      "lint_report": {},
+      "constraint_report": {},
+      "elapsed_ms": 0,
+      "error": "",
+      "timestamp": "2026-02-27T15:46:57.802182"
+    },
+    {
+      "task_id": "CORR-001",
+      "system_id": "VisArt-Full",
+      "prompt": "Show the relationship between GDP per capita and life expectancy across countries",
+      "generated_code": "// Placeholder for CORR-001 with VisArt-Full",
+      "render_success": true,
+      "metrics": [
+        {
+          "metric_id": "CCR",
+          "name": "Constraint Compliance Rate",
+          "value": 1.0,
+          "details": "16/16 hard constraints passed"
+        },
+        {
+          "metric_id": "DQS",
+          "name": "Design Quality Score",
+          "value": 88.0,
+          "details": "Total penalty: 12.0"
+        },
+        {
+          "metric_id": "EMR",
+          "name": "Encoding Match Rate",
+          "value": 0.0,
+          "details": "Chart: ✗, Encodings: 0/4"
+        },
+        {
+          "metric_id": "PE",
+          "name": "Perceptual Effectiveness",
+          "value": 0.0,
+          "details": "Score: 0.0/5"
+        },
+        {
+          "metric_id": "AS",
+          "name": "Accessibility Score",
+          "value": 0.7,
+          "details": "Contrast: 0.7, Checks: 1"
+        },
+        {
+          "metric_id": "RSR",
+          "name": "Rendering Success Rate",
+          "value": 1.0,
+          "details": "Rendered successfully"
+        }
+      ],
+      "lint_report": {},
+      "constraint_report": {},
+      "elapsed_ms": 0,
+      "error": "",
+      "timestamp": "2026-02-27T15:46:57.803037"
+    },
+    {
+      "task_id": "CORR-002",
+      "system_id": "VisArt-Full",
+      "prompt": "Visualize correlations between 5 numeric features in the dataset",
+      "generated_code": "// Placeholder for CORR-002 with VisArt-Full",
+      "render_success": true,
+      "metrics": [
+        {
+          "metric_id": "CCR",
+          "name": "Constraint Compliance Rate",
+          "value": 1.0,
+          "details": "16/16 hard constraints passed"
+        },
+        {
+          "metric_id": "DQS",
+          "name": "Design Quality Score",
+          "value": 92.0,
+          "details": "Total penalty: 8.0"
+        },
+        {
+          "metric_id": "EMR",
+          "name": "Encoding Match Rate",
+          "value": 0.0,
+          "details": "Chart: ✗, Encodings: 0/3"
+        },
+        {
+          "metric_id": "PE",
+          "name": "Perceptual Effectiveness",
+          "value": 0.0,
+          "details": "Score: 0.0/5"
+        },
+        {
+          "metric_id": "AS",
+          "name": "Accessibility Score",
+          "value": 0.7,
+          "details": "Contrast: 0.7, Checks: 1"
+        },
+        {
+          "metric_id": "RSR",
+          "name": "Rendering Success Rate",
+          "value": 1.0,
+          "details": "Rendered successfully"
+        }
+      ],
+      "lint_report": {},
+      "constraint_report": {},
+      "elapsed_ms": 0,
+      "error": "",
+      "timestamp": "2026-02-27T15:46:57.804213"
+    },
+    {
+      "task_id": "HIER-001",
+      "system_id": "VisArt-Full",
+      "prompt": "Show the file system disk usage by folder hierarchy",
+      "generated_code": "// Placeholder for HIER-001 with VisArt-Full",
+      "render_success": true,
+      "metrics": [
+        {
+          "metric_id": "CCR",
+          "name": "Constraint Compliance Rate",
+          "value": 1.0,
+          "details": "16/16 hard constraints passed"
+        },
+        {
+          "metric_id": "DQS",
+          "name": "Design Quality Score",
+          "value": 88.0,
+          "details": "Total penalty: 12.0"
+        },
+        {
+          "metric_id": "EMR",
+          "name": "Encoding Match Rate",
+          "value": 0.0,
+          "details": "Chart: ✗, Encodings: 0/3"
+        },
+        {
+          "metric_id": "PE",
+          "name": "Perceptual Effectiveness",
+          "value": 0.0,
+          "details": "Score: 0.0/3"
+        },
+        {
+          "metric_id": "AS",
+          "name": "Accessibility Score",
+          "value": 0.7,
+          "details": "Contrast: 0.7, Checks: 1"
+        },
+        {
+          "metric_id": "RSR",
+          "name": "Rendering Success Rate",
+          "value": 1.0,
+          "details": "Rendered successfully"
+        }
+      ],
+      "lint_report": {},
+      "constraint_report": {},
+      "elapsed_ms": 0,
+      "error": "",
+      "timestamp": "2026-02-27T15:46:57.805222"
+    },
+    {
+      "task_id": "ANOM-001",
+      "system_id": "VisArt-Full",
+      "prompt": "Highlight the months with unusually high or low energy consumption",
+      "generated_code": "// Placeholder for ANOM-001 with VisArt-Full",
+      "render_success": true,
+      "metrics": [
+        {
+          "metric_id": "CCR",
+          "name": "Constraint Compliance Rate",
+          "value": 1.0,
+          "details": "16/16 hard constraints passed"
+        },
+        {
+          "metric_id": "DQS",
+          "name": "Design Quality Score",
+          "value": 88.0,
+          "details": "Total penalty: 12.0"
+        },
+        {
+          "metric_id": "EMR",
+          "name": "Encoding Match Rate",
+          "value": 0.0,
+          "details": "Chart: ✗, Encodings: 0/3"
+        },
+        {
+          "metric_id": "PE",
+          "name": "Perceptual Effectiveness",
+          "value": 0.0,
+          "details": "Score: 0.0/2"
+        },
+        {
+          "metric_id": "AS",
+          "name": "Accessibility Score",
+          "value": 0.7,
+          "details": "Contrast: 0.7, Checks: 1"
+        },
+        {
+          "metric_id": "RSR",
+          "name": "Rendering Success Rate",
+          "value": 1.0,
+          "details": "Rendered successfully"
+        }
+      ],
+      "lint_report": {},
+      "constraint_report": {},
+      "elapsed_ms": 0,
+      "error": "",
+      "timestamp": "2026-02-27T15:46:57.806086"
+    },
+    {
+      "task_id": "PROP-001",
+      "system_id": "VisArt-Full",
+      "prompt": "Show the market share breakdown of top 5 browser vendors",
+      "generated_code": "// Placeholder for PROP-001 with VisArt-Full",
+      "render_success": true,
+      "metrics": [
+        {
+          "metric_id": "CCR",
+          "name": "Constraint Compliance Rate",
+          "value": 1.0,
+          "details": "16/16 hard constraints passed"
+        },
+        {
+          "metric_id": "DQS",
+          "name": "Design Quality Score",
+          "value": 92.0,
+          "details": "Total penalty: 8.0"
+        },
+        {
+          "metric_id": "EMR",
+          "name": "Encoding Match Rate",
+          "value": 0.0,
+          "details": "Chart: ✗, Encodings: 0/2"
+        },
+        {
+          "metric_id": "PE",
+          "name": "Perceptual Effectiveness",
+          "value": 0.0,
+          "details": "Score: 0.0/2"
+        },
+        {
+          "metric_id": "AS",
+          "name": "Accessibility Score",
+          "value": 0.7,
+          "details": "Contrast: 0.7, Checks: 1"
+        },
+        {
+          "metric_id": "RSR",
+          "name": "Rendering Success Rate",
+          "value": 1.0,
+          "details": "Rendered successfully"
+        }
+      ],
+      "lint_report": {},
+      "constraint_report": {},
+      "elapsed_ms": 0,
+      "error": "",
+      "timestamp": "2026-02-27T15:46:57.806769"
+    },
+    {
+      "task_id": "DENSITY-001",
+      "system_id": "VisArt-Full",
+      "prompt": "Explore patterns in 5000 customer transactions (amount vs time)",
+      "generated_code": "// Placeholder for DENSITY-001 with VisArt-Full",
+      "render_success": true,
+      "metrics": [
+        {
+          "metric_id": "CCR",
+          "name": "Constraint Compliance Rate",
+          "value": 1.0,
+          "details": "16/16 hard constraints passed"
+        },
+        {
+          "metric_id": "DQS",
+          "name": "Design Quality Score",
+          "value": 92.0,
+          "details": "Total penalty: 8.0"
+        },
+        {
+          "metric_id": "EMR",
+          "name": "Encoding Match Rate",
+          "value": 0.0,
+          "details": "Chart: ✗, Encodings: 0/3"
+        },
+        {
+          "metric_id": "PE",
+          "name": "Perceptual Effectiveness",
+          "value": 0.5,
+          "details": "No fields to evaluate"
+        },
+        {
+          "metric_id": "AS",
+          "name": "Accessibility Score",
+          "value": 0.7,
+          "details": "Contrast: 0.7, Checks: 1"
+        },
+        {
+          "metric_id": "RSR",
+          "name": "Rendering Success Rate",
+          "value": 1.0,
+          "details": "Rendered successfully"
+        }
+      ],
+      "lint_report": {},
+      "constraint_report": {},
+      "elapsed_ms": 0,
+      "error": "",
+      "timestamp": "2026-02-27T15:46:57.807342"
+    }
+  ],
+  "aggregate_metrics": {
+    "CCR_mean": 1.0,
+    "CCR_min": 1.0,
+    "CCR_max": 1.0,
+    "DQS_mean": 90.0,
+    "DQS_min": 88.0,
+    "DQS_max": 96.0,
+    "EMR_mean": 0.0,
+    "EMR_min": 0.0,
+    "EMR_max": 0.0,
+    "PE_mean": 0.042,
+    "PE_min": 0.0,
+    "PE_max": 0.5,
+    "AS_mean": 0.7,
+    "AS_min": 0.7,
+    "AS_max": 0.7,
+    "RSR_mean": 1.0,
+    "RSR_min": 1.0,
+    "RSR_max": 1.0
+  }
+}

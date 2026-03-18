@@ -1,0 +1,161 @@
+{
+    "meta": {
+        "description": "CVD-safe and evidence-based color palettes for categorical, sequential, and diverging data.",
+        "sources": [
+            "Okabe & Ito 2008",
+            "ColorBrewer (Brewer 2003)",
+            "Viridis (van der Walt & Smith)",
+            "d3-scale-chromatic"
+        ]
+    },
+    "categorical": [
+        {
+            "id": "okabe_ito",
+            "name": "Okabe-Ito",
+            "cvd_safe": true,
+            "max_categories": 8,
+            "colors": [
+                "#E69F00",
+                "#56B4E9",
+                "#009E73",
+                "#F0E442",
+                "#0072B2",
+                "#D55E00",
+                "#CC79A7",
+                "#000000"
+            ],
+            "source": "Okabe & Ito 2008",
+            "recommended_for": "default categorical palette for unknown audiences"
+        },
+        {
+            "id": "tableau10",
+            "name": "Tableau 10",
+            "cvd_safe": false,
+            "max_categories": 10,
+            "colors": [
+                "#4e79a7",
+                "#f28e2b",
+                "#e15759",
+                "#76b7b2",
+                "#59a14f",
+                "#edc948",
+                "#b07aa1",
+                "#ff9da7",
+                "#9c755f",
+                "#bab0ac"
+            ],
+            "source": "Tableau Software",
+            "recommended_for": "general purpose when CVD is not primary concern"
+        },
+        {
+            "id": "colorbrewer_set2",
+            "name": "ColorBrewer Set2",
+            "cvd_safe": true,
+            "max_categories": 8,
+            "colors": [
+                "#66c2a5",
+                "#fc8d62",
+                "#8da0cb",
+                "#e78ac3",
+                "#a6d854",
+                "#ffd92f",
+                "#e5c494",
+                "#b3b3b3"
+            ],
+            "source": "Brewer 2003",
+            "recommended_for": "pastel/light theme categorical data"
+        },
+        {
+            "id": "colorbrewer_dark2",
+            "name": "ColorBrewer Dark2",
+            "cvd_safe": true,
+            "max_categories": 8,
+            "colors": [
+                "#1b9e77",
+                "#d95f02",
+                "#7570b3",
+                "#e7298a",
+                "#66a61e",
+                "#e6ab02",
+                "#a6761d",
+                "#666666"
+            ],
+            "source": "Brewer 2003",
+            "recommended_for": "dark/saturated categorical, good on light backgrounds"
+        }
+    ],
+    "sequential": [
+        {
+            "id": "viridis",
+            "name": "Viridis",
+            "cvd_safe": true,
+            "perceptually_uniform": true,
+            "d3_interpolator": "d3.interpolateViridis",
+            "source": "van der Walt & Smith",
+            "recommended_for": "default sequential colormap (monotonic luminance, CVD-safe)"
+        },
+        {
+            "id": "magma",
+            "name": "Magma",
+            "cvd_safe": true,
+            "perceptually_uniform": true,
+            "d3_interpolator": "d3.interpolateMagma",
+            "source": "van der Walt & Smith",
+            "recommended_for": "dark-to-bright sequential; good for dark backgrounds"
+        },
+        {
+            "id": "cividis",
+            "name": "Cividis",
+            "cvd_safe": true,
+            "perceptually_uniform": true,
+            "d3_interpolator": "d3.interpolateCividis",
+            "source": "Nuñez et al. 2018",
+            "recommended_for": "maximum CVD safety; optimized for deuteranopia"
+        },
+        {
+            "id": "blues",
+            "name": "Blues",
+            "cvd_safe": true,
+            "perceptually_uniform": false,
+            "d3_interpolator": "d3.interpolateBlues",
+            "source": "Brewer 2003",
+            "recommended_for": "single-hue sequential; choropleth maps"
+        }
+    ],
+    "diverging": [
+        {
+            "id": "rdbu",
+            "name": "Red-Blue Diverging",
+            "cvd_safe": false,
+            "d3_interpolator": "d3.interpolateRdBu",
+            "source": "Brewer 2003",
+            "midpoint_requirement": "data must have meaningful center (e.g., zero, mean)",
+            "recommended_for": "deviation from center; temperature anomalies"
+        },
+        {
+            "id": "brbg",
+            "name": "Brown-Blue-Green Diverging",
+            "cvd_safe": true,
+            "d3_interpolator": "d3.interpolateBrBG",
+            "source": "Brewer 2003",
+            "recommended_for": "CVD-safe diverging alternative"
+        },
+        {
+            "id": "prgn",
+            "name": "Purple-Green Diverging",
+            "cvd_safe": true,
+            "d3_interpolator": "d3.interpolatePRGn",
+            "source": "Brewer 2003",
+            "recommended_for": "CVD-safe diverging for categorical endpoints"
+        }
+    ],
+    "banned": [
+        {
+            "id": "rainbow",
+            "name": "Rainbow / Jet / HSV",
+            "reason": "Non-monotonic luminance creates false boundaries and Mach bands; misleads about magnitude",
+            "source": "Borland & Taylor 2007",
+            "exception": "MAY be acceptable for rapid categorical lookup tasks ONLY (with explicit justification)"
+        }
+    ]
+}

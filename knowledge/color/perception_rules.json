@@ -1,0 +1,218 @@
+[
+    {
+        "id": "PR-001",
+        "topic": "Contrast Ratio Minimum",
+        "condition": "Graphical objects (bars, lines, points) against canvas background",
+        "rule": "Enforce luminance contrast ratio ≥ 3:1 between mark fill/stroke and background.",
+        "detection": "Compare relative luminance: L = 0.2126*R + 0.7152*G + 0.0722*B; ratio = (L1+0.05)/(L2+0.05)",
+        "source": "WCAG 2.1 SC 1.4.11",
+        "severity": "hard",
+        "tags": [
+            "accessibility",
+            "contrast",
+            "WCAG"
+        ]
+    },
+    {
+        "id": "PR-002",
+        "topic": "Redundant Encoding for State/Category",
+        "condition": "Color hue used to convey state, value, or category",
+        "rule": "Do NOT rely on hue alone. Add redundant encoding: shape (d3.symbol), line style, fill pattern, or direct label.",
+        "source": "WCAG 2.1 SC 1.4.1",
+        "severity": "hard",
+        "tags": [
+            "accessibility",
+            "encoding",
+            "redundancy",
+            "CVD"
+        ]
+    },
+    {
+        "id": "PR-003",
+        "topic": "CVD-Safe Palette Default",
+        "condition": "Categorical data for general/unknown audience",
+        "rule": "Default to Okabe-Ito palette: [#E69F00, #56B4E9, #009E73, #F0E442, #0072B2, #D55E00, #CC79A7, #000000].",
+        "source": "Okabe & Ito 2008",
+        "severity": "soft",
+        "weight": 2,
+        "tags": [
+            "CVD",
+            "palette",
+            "categorical"
+        ]
+    },
+    {
+        "id": "PR-004",
+        "topic": "Red-Green Distinction Ban",
+        "condition": "Comparative or categorical colors for differentiation",
+        "rule": "STRICTLY BAN concurrent Pure Red (#FF0000) and Pure Green (#00FF00). Use Vermilion (#D55E00) and Bluish-Green (#009E73).",
+        "source": "Okabe & Ito 2008",
+        "severity": "hard",
+        "tags": [
+            "CVD",
+            "red-green",
+            "constraints"
+        ]
+    },
+    {
+        "id": "PR-005",
+        "topic": "Dark Mode Halation Prevention",
+        "condition": "Charts in dark mode (background luminance < 0.2)",
+        "rule": "Recalculate for >3:1 contrast. Desaturate large filled areas to reduce optical vibration.",
+        "source": "Material Design; WCAG Guidance",
+        "severity": "soft",
+        "weight": 2,
+        "tags": [
+            "accessibility",
+            "dark-mode",
+            "contrast"
+        ]
+    },
+    {
+        "id": "PR-006",
+        "topic": "Semantic Color Resonance",
+        "condition": "Data labels with universal color associations (e.g., 'Ocean', 'Forest', 'Gold')",
+        "rule": "Bypass default palette. Force-map categories to natural colors (e.g., 'Ocean'→'#006994').",
+        "source": "Lin et al. 2013",
+        "severity": "soft",
+        "weight": 1,
+        "tags": [
+            "semantics",
+            "categorical",
+            "cognitive-load"
+        ]
+    },
+    {
+        "id": "PR-007",
+        "topic": "Stroop Conflict Prevention",
+        "condition": "Assigning colors to entities with strong color associations",
+        "rule": "Prevent mismatches (e.g., 'Strawberry'→Blue). Stroop interference increases reaction time significantly.",
+        "source": "Lin et al. 2013",
+        "severity": "hard",
+        "tags": [
+            "cognitive-load",
+            "stroop-effect"
+        ]
+    },
+    {
+        "id": "PR-008",
+        "topic": "Rainbow/Jet Colormap Ban",
+        "condition": "Continuous quantitative → color mapping (heatmaps, scalar fields)",
+        "rule": "PROHIBIT Jet/Rainbow/HSV for magnitude. Auto-replace with Viridis/Magma/Cividis.",
+        "source": "Borland & Taylor 2007",
+        "severity": "hard",
+        "tags": [
+            "misleading-vis",
+            "scientific-vis"
+        ]
+    },
+    {
+        "id": "PR-009",
+        "topic": "Perceptual Uniformity for Continuous",
+        "condition": "Choropleths, density plots, isosurfaces",
+        "rule": "Use d3.interpolateViridis/Magma/Cividis. Ensure linear L* mapping (10% data = 10% visual).",
+        "source": "Smith & van der Walt",
+        "severity": "soft",
+        "weight": 3,
+        "tags": [
+            "quantitative",
+            "linear-luminance",
+            "accuracy"
+        ]
+    },
+    {
+        "id": "PR-010",
+        "topic": "Grayscale-Safe Continuous Scale",
+        "condition": "Validating continuous scales for CVD safety",
+        "rule": "Enforce monotonically increasing luminance profiles (Viridis/Cividis) readable in grayscale.",
+        "source": "Borland & Taylor 2007",
+        "severity": "soft",
+        "weight": 2,
+        "tags": [
+            "accessibility",
+            "CVD",
+            "grayscale-safe"
+        ]
+    },
+    {
+        "id": "PR-011",
+        "topic": "Category Discriminability Limit",
+        "condition": "Categorical color scale (d3.scaleOrdinal)",
+        "rule": "Max 12 distinct colors (ideal 6-10). If N>12, trigger high-cardinality reduction strategies.",
+        "source": "Setlur & Stone 2015; Ware 2004",
+        "severity": "hard",
+        "tags": [
+            "perception",
+            "cardinality"
+        ]
+    },
+    {
+        "id": "PR-012",
+        "topic": "High Cardinality Strategy",
+        "condition": "More categories than safe limit (>12)",
+        "rule": "Apply: 1) Aggregate tail to 'Other' (#BDBDBD), 2) Direct labeling, or 3) Small multiples faceting.",
+        "source": "General Best Practice",
+        "severity": "soft",
+        "weight": 1,
+        "tags": [
+            "grouping",
+            "small-multiples"
+        ]
+    },
+    {
+        "id": "PR-013",
+        "topic": "Extended Palette Luminance Strategy",
+        "condition": "Must differentiate >10 categories without aggregation",
+        "rule": "Abandon pure hue rotation. Alternate luminance and saturation to create distinguishable 'bands'.",
+        "source": "Setlur & Stone 2015",
+        "severity": "soft",
+        "weight": 1,
+        "tags": [
+            "color-space",
+            "HCL",
+            "discrimination"
+        ]
+    },
+    {
+        "id": "PR-014",
+        "topic": "Diverging Scale Midpoint Requirement",
+        "condition": "Diverging colormap selected",
+        "rule": "Data MUST have meaningful midpoint. Do not apply diverging to pure sequential data.",
+        "source": "Bavisitter (VIS 2024); Brewer 2003",
+        "severity": "hard",
+        "tags": [
+            "diverging",
+            "midpoint",
+            "expressiveness"
+        ]
+    },
+    {
+        "id": "PR-015",
+        "topic": "OKLCH Accessibility Optimization",
+        "condition": "Brand colors failing WCAG contrast",
+        "rule": "Modify Lightness (L) and Chroma (C) in OKLCH while keeping Hue (H) constant. Resolves 77% of violations.",
+        "source": "Perceptually-Minimal Color Optimization (VIS)",
+        "severity": "soft",
+        "weight": 2,
+        "tags": [
+            "accessibility",
+            "brand-colors",
+            "OKLCH"
+        ]
+    },
+    {
+        "id": "PR-016",
+        "topic": "Positive vs Negative Polarity",
+        "condition": "Displaying any visualization",
+        "rule": "Offer user-customizable contrast polarity. Neither light nor dark mode is universally superior — performance is individual.",
+        "source": "Contrast Polarity Evaluation (VIS)",
+        "severity": "soft",
+        "weight": 1,
+        "tags": [
+            "accessibility",
+            "dark-mode",
+            "light-mode",
+            "aging"
+        ]
+    }
+]

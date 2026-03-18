@@ -1,0 +1,99 @@
+[
+    {
+        "id": "ZOOM-OVERVIEW",
+        "zoom_level": "k < 1 (Overview)",
+        "description": "Global overview showing distribution shape and major groups.",
+        "strategies": [
+            {
+                "data_type": "clustered_points",
+                "technique": "Convex hull outlines around clusters (d3.polygonHull); hide individual nodes",
+                "rationale": "Reduces visual noise by showing group boundaries and spatial extent.",
+                "source": "Shneiderman 1996"
+            },
+            {
+                "data_type": "geographic",
+                "technique": "Simplify paths via Visvalingam-Whyatt (topojson.simplify); remove sub-pixel details",
+                "rationale": "Prevents aliasing artifacts and rendering lag from invisible geometry.",
+                "source": "Ellis & Dix 2007"
+            },
+            {
+                "data_type": "general",
+                "technique": "Render marks as pixels; suppress labels and edges; show only aggregate statistics",
+                "rationale": "Information density matches screen resolution."
+            }
+        ]
+    },
+    {
+        "id": "ZOOM-INTERMEDIATE",
+        "zoom_level": "1 ≤ k < 5 (Intermediate)",
+        "description": "Region-level detail with selective labeling.",
+        "strategies": [
+            {
+                "technique": "Reveal text labels using d3.quadtree collision detection; hide overlapping labels",
+                "rationale": "Ensures legibility by dynamically filtering annotations based on screen space.",
+                "source": "Luboschik et al. 2008"
+            },
+            {
+                "data_type": "network",
+                "technique": "Transition links from straight lines to curved Bezier paths with increased opacity",
+                "rationale": "Reveals edge relationships suppressed at overview to reduce clutter.",
+                "source": "Heer & Shneiderman 2012"
+            },
+            {
+                "data_type": "time_series",
+                "technique": "Keep axis formatting as Year or Month ('%Y' / '%b %Y')",
+                "rationale": "Temporal granularity matches visible time window."
+            }
+        ]
+    },
+    {
+        "id": "ZOOM-DETAIL",
+        "zoom_level": "k ≥ 5 (Detail)",
+        "description": "Full individual-item detail with rich interaction.",
+        "strategies": [
+            {
+                "rendering": "Switch from Canvas back to SVG for full event listeners (click, hover)",
+                "rationale": "Performance is prioritized at overview (Canvas); interactivity at detail (SVG).",
+                "source": "Ellis & Dix 2007"
+            },
+            {
+                "technique": "Show individual data labels and detailed tooltips",
+                "rationale": "User is inspecting specific items; full detail is warranted."
+            },
+            {
+                "data_type": "time_series",
+                "technique": "Switch axis formatting to full DateTime ('%Y-%m-%d %H:%M')",
+                "rationale": "Provides appropriate temporal precision for the zoomed-in time window.",
+                "source": "Heer & Shneiderman 2012"
+            },
+            {
+                "data_type": "image_data",
+                "technique": "Replace placeholder thumbnails with full-resolution images via IntersectionObserver",
+                "rationale": "Lazy-loads rich media only when large enough to be perceived.",
+                "source": "Bederson & Hollan 1994 (Pad++)"
+            },
+            {
+                "navigation": "Render minimap/overview+detail highlighting current zoom extent",
+                "rationale": "Mitigates 'Desert Fog' problem where users lose global position.",
+                "source": "Cockburn et al. 2008"
+            }
+        ]
+    },
+    {
+        "id": "ZOOM-PERFORMANCE",
+        "zoom_level": "During active zoom/pan interaction",
+        "description": "Performance optimizations during manipulation.",
+        "strategies": [
+            {
+                "technique": "Temporarily hide edges and labels while d3.event.transform is changing; restore on debounced end",
+                "rationale": "Maintains 60fps during manipulation.",
+                "source": "Heer & Shneiderman 2012"
+            },
+            {
+                "technique": "Define zoom.scaleExtent([0.5, 20]) and translateExtent matching data bounding box",
+                "rationale": "Prevents disorientation from panning into whitespace or over-zooming.",
+                "source": "Shneiderman 1996"
+            }
+        ]
+    }
+]

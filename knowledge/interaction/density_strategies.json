@@ -1,0 +1,93 @@
+[
+    {
+        "id": "DS-SPARSE",
+        "density_range": "N < 1000",
+        "label": "Low Density (Sparse)",
+        "rendering": {
+            "context": "SVG",
+            "mark_strategy": "individual <circle> elements with CSS transitions",
+            "rationale": "Object constancy via DOM enables rich interactivity and smooth transitions."
+        },
+        "interaction": {
+            "tooltip": "d3-delaunay / d3-voronoi overlay for expanded hover targets",
+            "selection": "click on individual marks",
+            "highlight": "selection.raise() + contrasting stroke"
+        },
+        "layout_options": {
+            "network": "d3-force with d3.forceCollide to prevent overlap",
+            "categorical": "standard position encoding"
+        },
+        "source": "Ellis & Dix 2007; Shneiderman 1996"
+    },
+    {
+        "id": "DS-MEDIUM",
+        "density_range": "1000 < N < 10000",
+        "label": "Medium Density",
+        "rendering": {
+            "context": "Canvas (d3.path + context2d)",
+            "mark_strategy": "reduced radius: r = 30/sqrt(N); alpha < 0.3; globalCompositeOperation='multiply'",
+            "rationale": "DOM manipulation becomes bottleneck; Canvas + blend modes highlight density hotspots."
+        },
+        "interaction": {
+            "tooltip": "d3-quadtree nearest-neighbor search on mousemove (O(log n))",
+            "selection": "d3.brush for region selection",
+            "zoom": "geometric zooming — pixels at overview, detailed glyphs at zoom k > threshold"
+        },
+        "layout_options": {
+            "categorical": "deterministic jittering (random noise within bin width)",
+            "general": "consider sampling if data > 5000"
+        },
+        "source": "Ellis & Dix 2007; Heer & Shneiderman 2012"
+    },
+    {
+        "id": "DS-HIGH",
+        "density_range": "10000 < N < 100000",
+        "label": "High Density",
+        "rendering": {
+            "context": "Canvas",
+            "mark_strategy": "aggregation mandatory"
+        },
+        "aggregation_strategies": [
+            {
+                "name": "Hexbin",
+                "condition": "continuous 2D data",
+                "d3_api": "d3-hexbin",
+                "encoding": "hexagonal cells, color intensity = bin count",
+                "source": "Ellis & Dix 2007"
+            },
+            {
+                "name": "Density Contour",
+                "condition": "topology/terrain focus",
+                "d3_api": "d3-contour (marching squares)",
+                "encoding": "topological regions showing distribution shape",
+                "source": "Ellis & Dix 2007"
+            },
+            {
+                "name": "Stochastic Sampling",
+                "condition": "real-time constraints",
+                "technique": "random subset N≈2000 preserving statistical properties",
+                "source": "Ellis & Dix 2007"
+            }
+        ],
+        "interaction": {
+            "filtering": "dynamic query widgets (range sliders) before rendering",
+            "coordination": "cross-filtering: brush histogram → filter scatterplot/map",
+            "zoom": "semantic zooming: clusters at level 0, individual points at level > 5"
+        },
+        "source": "Ellis & Dix 2007; Shneiderman 1996"
+    },
+    {
+        "id": "DS-EXTREME",
+        "density_range": "N > 100000",
+        "label": "Extreme Density",
+        "rendering": {
+            "context": "WebGL (via regl, PixiJS, or deck.gl)",
+            "rationale": "CPU-based rendering fails; GPU parallelization required for interactive frame rates."
+        },
+        "interaction": {
+            "strategy": "server-side aggregation + tile-based loading",
+            "zoom": "multi-resolution tiling with progressive detail"
+        },
+        "source": "Ellis & Dix 2007"
+    }
+]

@@ -1,0 +1,225 @@
+{
+    "meta": {
+        "description": "Visual channel effectiveness rankings for different data types, based on foundational visualization research.",
+        "primary_sources": [
+            "Cleveland & McGill (1984) - Graphical Perception",
+            "Mackinlay (1986) - Automating the Design of Graphical Presentations",
+            "Munzner (2014) - Visualization Analysis and Design, Ch.5",
+            "Stevens (1946) - On the Theory of Scales of Measurement"
+        ]
+    },
+    "data_types": {
+        "quantitative": {
+            "description": "Continuous or discrete numerical data with meaningful magnitude (ratio/interval scale).",
+            "stevens_level": "ratio/interval",
+            "channel_ranking": [
+                {
+                    "rank": 1,
+                    "channel": "position_common_scale",
+                    "accuracy": "highest",
+                    "example": "bar chart (aligned bars on shared axis)"
+                },
+                {
+                    "rank": 2,
+                    "channel": "position_nonaligned",
+                    "accuracy": "high",
+                    "example": "scatterplot (separate axes)"
+                },
+                {
+                    "rank": 3,
+                    "channel": "length",
+                    "accuracy": "high",
+                    "example": "bar length, line segment"
+                },
+                {
+                    "rank": 4,
+                    "channel": "tilt_angle",
+                    "accuracy": "medium",
+                    "example": "slope of line segments"
+                },
+                {
+                    "rank": 5,
+                    "channel": "area",
+                    "accuracy": "medium-low",
+                    "example": "bubble size (use sqrt scale!)"
+                },
+                {
+                    "rank": 6,
+                    "channel": "volume",
+                    "accuracy": "low",
+                    "example": "3D object size"
+                },
+                {
+                    "rank": 7,
+                    "channel": "color_luminance",
+                    "accuracy": "low",
+                    "example": "heatmap lightness"
+                },
+                {
+                    "rank": 8,
+                    "channel": "color_saturation",
+                    "accuracy": "lowest",
+                    "example": "color intensity"
+                }
+            ],
+            "hard_rules": [
+                "MUST NOT use shape or texture for quantitative data",
+                "MUST use sqrt or pow(0.5) scaling when encoding via area to compensate for perceptual underestimation (Flannery 1971)",
+                "MUST NOT use 3D volume in static visualizations (systematic underestimation)"
+            ]
+        },
+        "ordinal": {
+            "description": "Categorical data with inherent meaningful order (ordinal scale).",
+            "stevens_level": "ordinal",
+            "channel_ranking": [
+                {
+                    "rank": 1,
+                    "channel": "position",
+                    "accuracy": "highest",
+                    "example": "ordered axis placement"
+                },
+                {
+                    "rank": 2,
+                    "channel": "color_luminance",
+                    "accuracy": "high",
+                    "example": "light-to-dark sequential scale"
+                },
+                {
+                    "rank": 3,
+                    "channel": "color_saturation",
+                    "accuracy": "medium",
+                    "example": "pale-to-vivid"
+                },
+                {
+                    "rank": 4,
+                    "channel": "size",
+                    "accuracy": "medium",
+                    "example": "small-to-large marks"
+                },
+                {
+                    "rank": 5,
+                    "channel": "texture_density",
+                    "accuracy": "low",
+                    "example": "sparse-to-dense patterns"
+                }
+            ],
+            "hard_rules": [
+                "MUST use channels that convey order (luminance, size, position)",
+                "MUST NOT use hue alone (no inherent order in hue)",
+                "Sequential colormaps (Viridis, Blues) are preferred over diverging for pure ordinal"
+            ]
+        },
+        "nominal": {
+            "description": "Categorical data with no inherent order (nominal scale).",
+            "stevens_level": "nominal",
+            "channel_ranking": [
+                {
+                    "rank": 1,
+                    "channel": "spatial_region",
+                    "accuracy": "highest",
+                    "example": "faceting, small multiples"
+                },
+                {
+                    "rank": 2,
+                    "channel": "color_hue",
+                    "accuracy": "high",
+                    "example": "categorical color palette"
+                },
+                {
+                    "rank": 3,
+                    "channel": "motion",
+                    "accuracy": "high",
+                    "example": "animated grouping"
+                },
+                {
+                    "rank": 4,
+                    "channel": "shape",
+                    "accuracy": "medium",
+                    "example": "d3.symbol (circle, cross, diamond, etc.)"
+                },
+                {
+                    "rank": 5,
+                    "channel": "texture_pattern",
+                    "accuracy": "low",
+                    "example": "hatching, dots, stripes"
+                }
+            ],
+            "hard_rules": [
+                "MUST NOT use ordered channels (luminance, size) as primary encoding for nominal data — implies false ranking",
+                "Max 12 distinct hue categories (Ware 2004); if N>12, use grouping/faceting/aggregation",
+                "Redundant encoding recommended: hue + shape for accessibility"
+            ]
+        },
+        "temporal": {
+            "description": "Time-based data (dates, timestamps, durations).",
+            "stevens_level": "interval/ratio",
+            "channel_ranking": [
+                {
+                    "rank": 1,
+                    "channel": "position_horizontal",
+                    "accuracy": "highest",
+                    "example": "x-axis time scale"
+                },
+                {
+                    "rank": 2,
+                    "channel": "connection_order",
+                    "accuracy": "high",
+                    "example": "line chart connecting temporal points"
+                },
+                {
+                    "rank": 3,
+                    "channel": "animation",
+                    "accuracy": "medium",
+                    "example": "temporal playback (scrubbing)"
+                }
+            ],
+            "hard_rules": [
+                "Time SHOULD map to horizontal axis (left=past, right=future) by convention",
+                "Line marks preferred over bar marks for continuous temporal data (implies continuity)",
+                "Bar marks preferred for discrete temporal bins (monthly aggregations, etc.)"
+            ]
+        }
+    },
+    "cross_cutting_principles": {
+        "expressiveness": {
+            "source": "Mackinlay 1986",
+            "definition": "A visualization is expressive if it encodes all and only the information in the data. Ordered data requires ordered channels; unordered data requires identity channels.",
+            "violations": [
+                {
+                    "violation": "Using line marks for nominal x-axis",
+                    "reason": "Implies false continuity/order"
+                },
+                {
+                    "violation": "Using hue gradient for quantitative data",
+                    "reason": "Hue has no perceptual ordering"
+                },
+                {
+                    "violation": "Using size for nominal categories",
+                    "reason": "Implies false magnitude differences"
+                }
+            ]
+        },
+        "effectiveness": {
+            "source": "Mackinlay 1986",
+            "definition": "A visualization is effective if it exploits the most accurate visual channels for the most important data attributes.",
+            "guideline": "Map the most important data dimension to the highest-ranked channel for its data type."
+        },
+        "discriminability": {
+            "source": "Ware 2004",
+            "limits": {
+                "color_hue": {
+                    "max_categories": 12,
+                    "ideal": "6-8"
+                },
+                "shape": {
+                    "max_categories": 6,
+                    "note": "Beyond 6, shapes become hard to distinguish at small sizes"
+                },
+                "size": {
+                    "min_ratio": 2.0,
+                    "note": "Adjacent size steps should differ by at least factor of 2 for reliable discrimination"
+                }
+            }
+        }
+    }
+}

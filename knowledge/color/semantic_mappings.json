@@ -1,0 +1,81 @@
+{
+    "meta": {
+        "description": "Common semantic color associations for automatic color mapping based on data label content.",
+        "source": "Lin et al. 2013; Cultural conventions",
+        "usage": "Pre-process data labels; if strong association found (>threshold), lock color assignment before distributing remaining."
+    },
+    "mappings": {
+        "nature": {
+            "ocean": "#006994",
+            "sea": "#006994",
+            "water": "#4FC3F7",
+            "forest": "#228B22",
+            "tree": "#2E7D32",
+            "grass": "#4CAF50",
+            "leaf": "#66BB6A",
+            "sky": "#87CEEB",
+            "cloud": "#B0BEC5",
+            "earth": "#8D6E63",
+            "soil": "#795548",
+            "sand": "#F5DEB3",
+            "fire": "#FF5722",
+            "flame": "#FF6F00",
+            "sun": "#FFD600",
+            "snow": "#ECEFF1",
+            "ice": "#B3E5FC",
+            "mountain": "#78909C",
+            "rock": "#9E9E9E"
+        },
+        "food": {
+            "strawberry": "#E53935",
+            "cherry": "#C62828",
+            "tomato": "#F44336",
+            "banana": "#FFE135",
+            "lemon": "#FDD835",
+            "orange": "#FF9800",
+            "carrot": "#EF6C00",
+            "blueberry": "#3F51B5",
+            "grape": "#7B1FA2",
+            "chocolate": "#5D4037",
+            "coffee": "#6D4C41",
+            "milk": "#FAFAFA",
+            "cream": "#FFF8E1"
+        },
+        "emotion_state": {
+            "danger": "#D32F2F",
+            "error": "#C62828",
+            "alert": "#FF5722",
+            "warning": "#FFA000",
+            "caution": "#FFB300",
+            "success": "#2E7D32",
+            "positive": "#43A047",
+            "growth": "#66BB6A",
+            "neutral": "#9E9E9E",
+            "inactive": "#BDBDBD",
+            "info": "#1976D2",
+            "calm": "#42A5F5"
+        },
+        "finance": {
+            "profit": "#2E7D32",
+            "gain": "#43A047",
+            "loss": "#C62828",
+            "debt": "#D32F2F",
+            "gold": "#FFD700",
+            "silver": "#C0C0C0",
+            "bronze": "#CD7F32"
+        },
+        "temperature": {
+            "hot": "#D32F2F",
+            "warm": "#FF8A65",
+            "cold": "#1565C0",
+            "cool": "#42A5F5",
+            "freezing": "#B3E5FC"
+        },
+        "gender_convention": {
+            "_note": "Use with caution — culturally specific and potentially reinforcing stereotypes",
+            "male": "#42A5F5",
+            "female": "#EC407A",
+            "non_binary": "#AB47BC"
+        }
+    }
+}

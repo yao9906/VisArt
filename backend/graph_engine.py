@@ -91,33 +91,36 @@ class VisualGraphRAG:
         
         print(f"Graph Built: {self.graph.number_of_nodes()} nodes, {self.graph.number_of_edges()} edges.")
 
-    def get_embedding(self, text: str):
-        """Wraps Gemini Embedding API (New SDK)."""
-        try:
-            # Short-circuit if empty text
-            if not text.strip():
-                 return [0.0] * 768
-
-            # Try-catch specifically for the API call
-            # Using embedding-001 for broader compatibility if text-embedding-004 fails (404)
-            result = self.client.models.embed_content(
-                model="models/embedding-001",
-                contents=text,
-                config=types.EmbedContentConfig(task_type="RETRIEVAL_QUERY")
-            )
-            # Support both list and ndarray return types from SDK
-            return result.embeddings[0].values
-        except Exception as e:
-            # VERY IMPORTANT: Log the error type
-            error_msg = str(e)
-            if "400" in error_msg and "User location" in error_msg:
-                print("EROR: Region Blocked. Please switch Proxy to USA/Singapore/Taiwan.")
-            elif "404" in error_msg:
-                 print("ERROR: Model not found. Check model name.")
-            else:
-                 print(f"Embedding error: {error_msg}")
-            
+    def get_embedding(self, text: str, max_retries: int = 3):
+        """Wraps Gemini Embedding API (New SDK) with retry logic."""
+        import time
+        if not text.strip():
             return [0.0] * 768
+
+        for attempt in range(max_retries):
+            try:
+                result = self.client.models.embed_content(
+                    model="gemini-embedding-001",
+                    contents=text,
+                    config=types.EmbedContentConfig(task_type="RETRIEVAL_QUERY")
+                )
+                return result.embeddings[0].values
+            except Exception as e:
+                error_msg = str(e)
+                if "SSL" in error_msg or "EOF" in error_msg or "Connection" in error_msg:
+                    print(f"SSL/Connection error (attempt {attempt+1}/{max_retries}): {error_msg[:80]}")
+                    if attempt < max_retries - 1:
+                        time.sleep(2)
+                        continue
+                elif "400" in error_msg and "User location" in error_msg:
+                    print("ERROR: Region Blocked. Please switch Proxy to USA/Singapore/Taiwan.")
+                elif "404" in error_msg:
+                    print("ERROR: Model not found. Check model name.")
+                else:
+                    print(f"Embedding error: {error_msg}")
+                break
+        
+        return [0.0] * 768
 
     def load_or_build_indices(self):
         """Loads embeddings from cache if available, otherwise computes and saves them."""

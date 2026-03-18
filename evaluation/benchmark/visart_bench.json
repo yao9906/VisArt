@@ -1,0 +1,1160 @@
+[
+    {
+        "id": "TREND-001",
+        "category": "trend_analysis",
+        "prompt": "Show the monthly average temperature trend over the past 5 years",
+        "data_type": "temporal",
+        "data": [
+            {
+                "month": "2020-01",
+                "avg_temp": 2.1
+            },
+            {
+                "month": "2020-02",
+                "avg_temp": 3.5
+            },
+            {
+                "month": "2020-03",
+                "avg_temp": 8.2
+            },
+            {
+                "month": "2020-04",
+                "avg_temp": 13.7
+            },
+            {
+                "month": "2020-05",
+                "avg_temp": 18.4
+            },
+            {
+                "month": "2020-06",
+                "avg_temp": 22.1
+            },
+            {
+                "month": "2020-07",
+                "avg_temp": 25.3
+            },
+            {
+                "month": "2020-08",
+                "avg_temp": 24.8
+            },
+            {
+                "month": "2020-09",
+                "avg_temp": 19.6
+            },
+            {
+                "month": "2020-10",
+                "avg_temp": 13.2
+            },
+            {
+                "month": "2020-11",
+                "avg_temp": 7.4
+            },
+            {
+                "month": "2020-12",
+                "avg_temp": 3.1
+            },
+            {
+                "month": "2021-01",
+                "avg_temp": 1.8
+            },
+            {
+                "month": "2021-02",
+                "avg_temp": 4.2
+            },
+            {
+                "month": "2021-03",
+                "avg_temp": 9.1
+            },
+            {
+                "month": "2021-04",
+                "avg_temp": 14.3
+            },
+            {
+                "month": "2021-05",
+                "avg_temp": 19.2
+            },
+            {
+                "month": "2021-06",
+                "avg_temp": 23.5
+            },
+            {
+                "month": "2021-07",
+                "avg_temp": 26.1
+            },
+            {
+                "month": "2021-08",
+                "avg_temp": 25.4
+            },
+            {
+                "month": "2021-09",
+                "avg_temp": 20.3
+            },
+            {
+                "month": "2021-10",
+                "avg_temp": 14.1
+            },
+            {
+                "month": "2021-11",
+                "avg_temp": 8.2
+            },
+            {
+                "month": "2021-12",
+                "avg_temp": 2.9
+            }
+        ],
+        "expert_spec": {
+            "chart_type": "line_chart",
+            "mark": "line",
+            "encodings": {
+                "x": "month",
+                "y": "avg_temp"
+            },
+            "x_type": "temporal",
+            "y_type": "quantitative",
+            "interactions": [
+                "tooltip",
+                "brush_x"
+            ],
+            "colormap": null,
+            "title": "Monthly Average Temperature Trend (2020-2021)"
+        },
+        "required_constraints": [
+            "HC-ENC-003_not_applicable",
+            "SC-EFF-002",
+            "SC-INTER-003"
+        ],
+        "task_spec": {
+            "why": "discover",
+            "search": "explore",
+            "query": "summarize"
+        },
+        "difficulty": "easy"
+    },
+    {
+        "id": "TREND-002",
+        "category": "trend_analysis",
+        "prompt": "Visualize the stock price movement of AAPL over the last year with volume",
+        "data_type": "temporal_multivariate",
+        "data": [
+            {
+                "date": "2024-01",
+                "close": 185.2,
+                "volume": 52000000
+            },
+            {
+                "date": "2024-02",
+                "close": 188.7,
+                "volume": 48000000
+            },
+            {
+                "date": "2024-03",
+                "close": 171.5,
+                "volume": 65000000
+            },
+            {
+                "date": "2024-04",
+                "close": 169.3,
+                "volume": 58000000
+            },
+            {
+                "date": "2024-05",
+                "close": 192.4,
+                "volume": 44000000
+            },
+            {
+                "date": "2024-06",
+                "close": 210.6,
+                "volume": 53000000
+            },
+            {
+                "date": "2024-07",
+                "close": 222.1,
+                "volume": 61000000
+            },
+            {
+                "date": "2024-08",
+                "close": 226.8,
+                "volume": 47000000
+            },
+            {
+                "date": "2024-09",
+                "close": 228.5,
+                "volume": 42000000
+            },
+            {
+                "date": "2024-10",
+                "close": 225.9,
+                "volume": 39000000
+            },
+            {
+                "date": "2024-11",
+                "close": 237.3,
+                "volume": 51000000
+            },
+            {
+                "date": "2024-12",
+                "close": 243.0,
+                "volume": 45000000
+            }
+        ],
+        "expert_spec": {
+            "chart_type": "dual_axis_line_bar",
+            "mark": [
+                "line",
+                "bar"
+            ],
+            "encodings": {
+                "x": "date",
+                "y1": "close",
+                "y2": "volume"
+            },
+            "interactions": [
+                "tooltip",
+                "crosshair",
+                "brush_x"
+            ],
+            "title": "AAPL Stock Price & Volume"
+        },
+        "required_constraints": [
+            "SC-EFF-002",
+            "SC-INTER-003",
+            "SC-INTER-007"
+        ],
+        "task_spec": {
+            "why": "discover",
+            "search": "explore",
+            "query": "summarize"
+        },
+        "difficulty": "medium"
+    },
+    {
+        "id": "CAT-001",
+        "category": "categorical_comparison",
+        "prompt": "Compare sales revenue across 6 product categories",
+        "data_type": "categorical_numeric",
+        "data": [
+            {
+                "category": "Electronics",
+                "revenue": 45200
+            },
+            {
+                "category": "Clothing",
+                "revenue": 32100
+            },
+            {
+                "category": "Food",
+                "revenue": 28700
+            },
+            {
+                "category": "Home",
+                "revenue": 19400
+            },
+            {
+                "category": "Sports",
+                "revenue": 15800
+            },
+            {
+                "category": "Books",
+                "revenue": 8900
+            }
+        ],
+        "expert_spec": {
+            "chart_type": "bar_chart",
+            "mark": "bar",
+            "encodings": {
+                "x": "category",
+                "y": "revenue",
+                "color": "category"
+            },
+            "x_type": "nominal",
+            "y_type": "quantitative",
+            "interactions": [
+                "tooltip",
+                "hover_highlight"
+            ],
+            "sort": "descending_by_revenue",
+            "title": "Revenue by Product Category"
+        },
+        "required_constraints": [
+            "HC-ENC-001",
+            "SC-EFF-001",
+            "SC-DESIGN-001"
+        ],
+        "task_spec": {
+            "why": "present",
+            "search": "browse",
+            "query": "compare"
+        },
+        "difficulty": "easy"
+    },
+    {
+        "id": "CAT-002",
+        "category": "categorical_comparison",
+        "prompt": "Compare quarterly performance across 4 regions over 2 years",
+        "data_type": "categorical_temporal",
+        "data": [
+            {
+                "region": "North",
+                "quarter": "Q1-23",
+                "sales": 120
+            },
+            {
+                "region": "North",
+                "quarter": "Q2-23",
+                "sales": 145
+            },
+            {
+                "region": "North",
+                "quarter": "Q3-23",
+                "sales": 132
+            },
+            {
+                "region": "North",
+                "quarter": "Q4-23",
+                "sales": 168
+            },
+            {
+                "region": "South",
+                "quarter": "Q1-23",
+                "sales": 95
+            },
+            {
+                "region": "South",
+                "quarter": "Q2-23",
+                "sales": 112
+            },
+            {
+                "region": "South",
+                "quarter": "Q3-23",
+                "sales": 108
+            },
+            {
+                "region": "South",
+                "quarter": "Q4-23",
+                "sales": 135
+            },
+            {
+                "region": "East",
+                "quarter": "Q1-23",
+                "sales": 78
+            },
+            {
+                "region": "East",
+                "quarter": "Q2-23",
+                "sales": 89
+            },
+            {
+                "region": "East",
+                "quarter": "Q3-23",
+                "sales": 95
+            },
+            {
+                "region": "East",
+                "quarter": "Q4-23",
+                "sales": 102
+            },
+            {
+                "region": "West",
+                "quarter": "Q1-23",
+                "sales": 140
+            },
+            {
+                "region": "West",
+                "quarter": "Q2-23",
+                "sales": 155
+            },
+            {
+                "region": "West",
+                "quarter": "Q3-23",
+                "sales": 148
+            },
+            {
+                "region": "West",
+                "quarter": "Q4-23",
+                "sales": 172
+            }
+        ],
+        "expert_spec": {
+            "chart_type": "grouped_bar_chart",
+            "mark": "bar",
+            "encodings": {
+                "x": "quarter",
+                "y": "sales",
+                "color": "region"
+            },
+            "interactions": [
+                "tooltip",
+                "legend_toggle"
+            ],
+            "title": "Quarterly Sales by Region"
+        },
+        "required_constraints": [
+            "HC-ENC-001",
+            "HC-COLOR-005",
+            "SC-COLOR-002",
+            "SC-DESIGN-001"
+        ],
+        "task_spec": {
+            "why": "present",
+            "search": "browse",
+            "query": "compare"
+        },
+        "difficulty": "medium"
+    },
+    {
+        "id": "DIST-001",
+        "category": "distribution",
+        "prompt": "Explore the age distribution of survey respondents",
+        "data_type": "continuous_numeric",
+        "data": [
+            {
+                "age": 18
+            },
+            {
+                "age": 19
+            },
+            {
+                "age": 21
+            },
+            {
+                "age": 22
+            },
+            {
+                "age": 22
+            },
+            {
+                "age": 23
+            },
+            {
+                "age": 24
+            },
+            {
+                "age": 24
+            },
+            {
+                "age": 25
+            },
+            {
+                "age": 25
+            },
+            {
+                "age": 26
+            },
+            {
+                "age": 27
+            },
+            {
+                "age": 28
+            },
+            {
+                "age": 28
+            },
+            {
+                "age": 29
+            },
+            {
+                "age": 30
+            },
+            {
+                "age": 30
+            },
+            {
+                "age": 31
+            },
+            {
+                "age": 32
+            },
+            {
+                "age": 33
+            },
+            {
+                "age": 34
+            },
+            {
+                "age": 35
+            },
+            {
+                "age": 35
+            },
+            {
+                "age": 36
+            },
+            {
+                "age": 37
+            },
+            {
+                "age": 38
+            },
+            {
+                "age": 40
+            },
+            {
+                "age": 42
+            },
+            {
+                "age": 45
+            },
+            {
+                "age": 48
+            },
+            {
+                "age": 50
+            },
+            {
+                "age": 52
+            },
+            {
+                "age": 55
+            },
+            {
+                "age": 58
+            },
+            {
+                "age": 60
+            },
+            {
+                "age": 63
+            },
+            {
+                "age": 65
+            },
+            {
+                "age": 68
+            },
+            {
+                "age": 72
+            },
+            {
+                "age": 78
+            }
+        ],
+        "expert_spec": {
+            "chart_type": "histogram",
+            "mark": "bar",
+            "encodings": {
+                "x": "age",
+                "y": "count"
+            },
+            "bin_count": "auto_sturges",
+            "interactions": [
+                "tooltip",
+                "brush"
+            ],
+            "title": "Age Distribution of Respondents"
+        },
+        "required_constraints": [
+            "SC-EFF-001",
+            "SC-DESIGN-001"
+        ],
+        "task_spec": {
+            "why": "discover",
+            "search": "explore",
+            "query": "summarize"
+        },
+        "difficulty": "easy"
+    },
+    {
+        "id": "DIST-002",
+        "category": "distribution",
+        "prompt": "Compare the salary distributions across 3 departments using violin plots or box plots",
+        "data_type": "grouped_numeric",
+        "data": [
+            {
+                "dept": "Engineering",
+                "salary": 95000
+            },
+            {
+                "dept": "Engineering",
+                "salary": 105000
+            },
+            {
+                "dept": "Engineering",
+                "salary": 115000
+            },
+            {
+                "dept": "Engineering",
+                "salary": 88000
+            },
+            {
+                "dept": "Engineering",
+                "salary": 125000
+            },
+            {
+                "dept": "Engineering",
+                "salary": 110000
+            },
+            {
+                "dept": "Marketing",
+                "salary": 72000
+            },
+            {
+                "dept": "Marketing",
+                "salary": 68000
+            },
+            {
+                "dept": "Marketing",
+                "salary": 85000
+            },
+            {
+                "dept": "Marketing",
+                "salary": 78000
+            },
+            {
+                "dept": "Marketing",
+                "salary": 92000
+            },
+            {
+                "dept": "Marketing",
+                "salary": 65000
+            },
+            {
+                "dept": "Sales",
+                "salary": 55000
+            },
+            {
+                "dept": "Sales",
+                "salary": 62000
+            },
+            {
+                "dept": "Sales",
+                "salary": 78000
+            },
+            {
+                "dept": "Sales",
+                "salary": 95000
+            },
+            {
+                "dept": "Sales",
+                "salary": 48000
+            },
+            {
+                "dept": "Sales",
+                "salary": 115000
+            }
+        ],
+        "expert_spec": {
+            "chart_type": "box_plot",
+            "mark": "boxplot",
+            "encodings": {
+                "x": "dept",
+                "y": "salary",
+                "color": "dept"
+            },
+            "interactions": [
+                "tooltip"
+            ],
+            "title": "Salary Distribution by Department"
+        },
+        "required_constraints": [
+            "HC-ENC-001",
+            "SC-EFF-001",
+            "SC-COLOR-002"
+        ],
+        "task_spec": {
+            "why": "discover",
+            "search": "browse",
+            "query": "compare"
+        },
+        "difficulty": "medium"
+    },
+    {
+        "id": "CORR-001",
+        "category": "correlation",
+        "prompt": "Show the relationship between GDP per capita and life expectancy across countries",
+        "data_type": "bivariate_numeric",
+        "data": [
+            {
+                "country": "Norway",
+                "gdp": 82000,
+                "life_exp": 82.4,
+                "pop": 5400000,
+                "continent": "Europe"
+            },
+            {
+                "country": "USA",
+                "gdp": 63000,
+                "life_exp": 78.9,
+                "pop": 331000000,
+                "continent": "Americas"
+            },
+            {
+                "country": "Japan",
+                "gdp": 39000,
+                "life_exp": 84.6,
+                "pop": 126000000,
+                "continent": "Asia"
+            },
+            {
+                "country": "Germany",
+                "gdp": 46000,
+                "life_exp": 81.3,
+                "pop": 83000000,
+                "continent": "Europe"
+            },
+            {
+                "country": "Brazil",
+                "gdp": 8700,
+                "life_exp": 75.9,
+                "pop": 212000000,
+                "continent": "Americas"
+            },
+            {
+                "country": "India",
+                "gdp": 2100,
+                "life_exp": 69.7,
+                "pop": 1380000000,
+                "continent": "Asia"
+            },
+            {
+                "country": "Nigeria",
+                "gdp": 2100,
+                "life_exp": 54.7,
+                "pop": 206000000,
+                "continent": "Africa"
+            },
+            {
+                "country": "China",
+                "gdp": 10500,
+                "life_exp": 76.9,
+                "pop": 1400000000,
+                "continent": "Asia"
+            },
+            {
+                "country": "Australia",
+                "gdp": 51000,
+                "life_exp": 83.4,
+                "pop": 25000000,
+                "continent": "Oceania"
+            },
+            {
+                "country": "Mexico",
+                "gdp": 9900,
+                "life_exp": 75.1,
+                "pop": 129000000,
+                "continent": "Americas"
+            },
+            {
+                "country": "S. Korea",
+                "gdp": 31500,
+                "life_exp": 83.5,
+                "pop": 52000000,
+                "continent": "Asia"
+            },
+            {
+                "country": "Ethiopia",
+                "gdp": 940,
+                "life_exp": 66.6,
+                "pop": 115000000,
+                "continent": "Africa"
+            }
+        ],
+        "expert_spec": {
+            "chart_type": "scatter_plot",
+            "mark": "circle",
+            "encodings": {
+                "x": "gdp",
+                "y": "life_exp",
+                "size": "pop",
+                "color": "continent"
+            },
+            "x_scale": "log",
+            "interactions": [
+                "tooltip",
+                "hover_highlight",
+                "zoom"
+            ],
+            "title": "GDP vs Life Expectancy (Gapminder-style)"
+        },
+        "required_constraints": [
+            "HC-ENC-002",
+            "HC-COLOR-005",
+            "SC-EFF-004",
+            "SC-INTER-006",
+            "SC-DESIGN-005"
+        ],
+        "task_spec": {
+            "why": "discover",
+            "search": "explore",
+            "query": "compare"
+        },
+        "difficulty": "hard"
+    },
+    {
+        "id": "CORR-002",
+        "category": "correlation",
+        "prompt": "Visualize correlations between 5 numeric features in the dataset",
+        "data_type": "multivariate_numeric",
+        "data": [
+            {
+                "mpg": 21,
+                "cyl": 6,
+                "hp": 110,
+                "wt": 2.62,
+                "qsec": 16.46
+            },
+            {
+                "mpg": 22.8,
+                "cyl": 4,
+                "hp": 93,
+                "wt": 2.32,
+                "qsec": 18.61
+            },
+            {
+                "mpg": 21.4,
+                "cyl": 6,
+                "hp": 110,
+                "wt": 3.21,
+                "qsec": 19.44
+            },
+            {
+                "mpg": 18.7,
+                "cyl": 8,
+                "hp": 175,
+                "wt": 3.44,
+                "qsec": 17.02
+            },
+            {
+                "mpg": 14.3,
+                "cyl": 8,
+                "hp": 245,
+                "wt": 3.57,
+                "qsec": 15.84
+            },
+            {
+                "mpg": 24.4,
+                "cyl": 4,
+                "hp": 62,
+                "wt": 3.19,
+                "qsec": 20.00
+            },
+            {
+                "mpg": 15.2,
+                "cyl": 8,
+                "hp": 150,
+                "wt": 3.44,
+                "qsec": 17.30
+            },
+            {
+                "mpg": 32.4,
+                "cyl": 4,
+                "hp": 78,
+                "wt": 2.20,
+                "qsec": 19.47
+            },
+            {
+                "mpg": 30.4,
+                "cyl": 4,
+                "hp": 75,
+                "wt": 1.61,
+                "qsec": 18.52
+            },
+            {
+                "mpg": 10.4,
+                "cyl": 8,
+                "hp": 205,
+                "wt": 5.25,
+                "qsec": 17.98
+            }
+        ],
+        "expert_spec": {
+            "chart_type": "scatterplot_matrix",
+            "mark": "circle",
+            "encodings": {
+                "x": "each_field",
+                "y": "each_field",
+                "color": "cyl"
+            },
+            "interactions": [
+                "brush_link",
+                "tooltip"
+            ],
+            "title": "Pairwise Correlations (mtcars)"
+        },
+        "required_constraints": [
+            "SC-DESIGN-005",
+            "SC-INTER-004"
+        ],
+        "task_spec": {
+            "why": "discover",
+            "search": "explore",
+            "query": "compare"
+        },
+        "difficulty": "hard"
+    },
+    {
+        "id": "HIER-001",
+        "category": "hierarchy",
+        "prompt": "Show the file system disk usage by folder hierarchy",
+        "data_type": "hierarchical",
+        "data": [
+            {
+                "path": "root",
+                "parent": null,
+                "size": 0
+            },
+            {
+                "path": "root/Documents",
+                "parent": "root",
+                "size": 2400
+            },
+            {
+                "path": "root/Documents/Work",
+                "parent": "root/Documents",
+                "size": 1200
+            },
+            {
+                "path": "root/Documents/Personal",
+                "parent": "root/Documents",
+                "size": 800
+            },
+            {
+                "path": "root/Documents/Archive",
+                "parent": "root/Documents",
+                "size": 400
+            },
+            {
+                "path": "root/Media",
+                "parent": "root",
+                "size": 8500
+            },
+            {
+                "path": "root/Media/Photos",
+                "parent": "root/Media",
+                "size": 5200
+            },
+            {
+                "path": "root/Media/Videos",
+                "parent": "root/Media",
+                "size": 3000
+            },
+            {
+                "path": "root/Media/Music",
+                "parent": "root/Media",
+                "size": 300
+            },
+            {
+                "path": "root/Code",
+                "parent": "root",
+                "size": 1500
+            },
+            {
+                "path": "root/Code/Python",
+                "parent": "root/Code",
+                "size": 800
+            },
+            {
+                "path": "root/Code/JS",
+                "parent": "root/Code",
+                "size": 700
+            },
+            {
+                "path": "root/System",
+                "parent": "root",
+                "size": 4200
+            }
+        ],
+        "expert_spec": {
+            "chart_type": "treemap",
+            "mark": "rect",
+            "encodings": {
+                "area": "size",
+                "color": "depth_or_parent",
+                "label": "name"
+            },
+            "interactions": [
+                "tooltip",
+                "drill_down"
+            ],
+            "title": "Disk Usage by Folder"
+        },
+        "required_constraints": [
+            "SC-EFF-003",
+            "SC-EFF-004",
+            "SC-DESIGN-001"
+        ],
+        "task_spec": {
+            "why": "present",
+            "search": "browse",
+            "query": "summarize"
+        },
+        "difficulty": "medium"
+    },
+    {
+        "id": "ANOM-001",
+        "category": "anomaly_detection",
+        "prompt": "Highlight the months with unusually high or low energy consumption",
+        "data_type": "temporal_with_outliers",
+        "data": [
+            {
+                "month": "Jan",
+                "kwh": 320
+            },
+            {
+                "month": "Feb",
+                "kwh": 310
+            },
+            {
+                "month": "Mar",
+                "kwh": 280
+            },
+            {
+                "month": "Apr",
+                "kwh": 240
+            },
+            {
+                "month": "May",
+                "kwh": 210
+            },
+            {
+                "month": "Jun",
+                "kwh": 580
+            },
+            {
+                "month": "Jul",
+                "kwh": 560
+            },
+            {
+                "month": "Aug",
+                "kwh": 540
+            },
+            {
+                "month": "Sep",
+                "kwh": 290
+            },
+            {
+                "month": "Oct",
+                "kwh": 260
+            },
+            {
+                "month": "Nov",
+                "kwh": 45
+            },
+            {
+                "month": "Dec",
+                "kwh": 350
+            }
+        ],
+        "expert_spec": {
+            "chart_type": "lollipop_with_annotation",
+            "mark": [
+                "circle",
+                "line",
+                "text"
+            ],
+            "encodings": {
+                "x": "month",
+                "y": "kwh",
+                "color": "is_anomaly"
+            },
+            "interactions": [
+                "tooltip"
+            ],
+            "annotations": [
+                "highlight outliers with different color",
+                "add reference line for mean"
+            ],
+            "title": "Monthly Energy Consumption (Anomalies Highlighted)"
+        },
+        "required_constraints": [
+            "SC-COLOR-003",
+            "SC-DESIGN-001",
+            "HC-STROOP-001"
+        ],
+        "task_spec": {
+            "why": "discover",
+            "search": "locate",
+            "query": "identify"
+        },
+        "difficulty": "medium"
+    },
+    {
+        "id": "PROP-001",
+        "category": "proportion",
+        "prompt": "Show the market share breakdown of top 5 browser vendors",
+        "data_type": "categorical_proportional",
+        "data": [
+            {
+                "browser": "Chrome",
+                "share": 64.7
+            },
+            {
+                "browser": "Safari",
+                "share": 18.8
+            },
+            {
+                "browser": "Firefox",
+                "share": 3.2
+            },
+            {
+                "browser": "Edge",
+                "share": 5.1
+            },
+            {
+                "browser": "Others",
+                "share": 8.2
+            }
+        ],
+        "expert_spec": {
+            "chart_type": "donut_chart",
+            "mark": "arc",
+            "encodings": {
+                "angle": "share",
+                "color": "browser"
+            },
+            "interactions": [
+                "tooltip",
+                "hover_expand"
+            ],
+            "title": "Browser Market Share"
+        },
+        "required_constraints": [
+            "HC-ENC-001",
+            "HC-COLOR-005",
+            "SC-COLOR-002",
+            "SC-DESIGN-001"
+        ],
+        "task_spec": {
+            "why": "present",
+            "search": "lookup",
+            "query": "summarize"
+        },
+        "difficulty": "easy"
+    },
+    {
+        "id": "DENSITY-001",
+        "category": "high_density",
+        "prompt": "Explore patterns in 5000 customer transactions (amount vs time)",
+        "data_type": "high_density_2d",
+        "data_generator": "generate_transactions(5000)",
+        "data": [],
+        "expert_spec": {
+            "chart_type": "hexbin_heatmap",
+            "mark": "hexagon",
+            "encodings": {
+                "x": "timestamp",
+                "y": "amount",
+                "color": "count"
+            },
+            "colormap": "viridis",
+            "renderer": "canvas",
+            "interactions": [
+                "zoom",
+                "brush",
+                "tooltip"
+            ],
+            "title": "Transaction Patterns (5K points)"
+        },
+        "required_constraints": [
+            "SC-INTER-001",
+            "SC-INTER-002",
+            "SC-COLOR-001",
+            "HC-COLOR-002"
+        ],
+        "task_spec": {
+            "why": "discover",
+            "search": "explore",
+            "query": "summarize"
+        },
+        "difficulty": "hard"
+    }
+]

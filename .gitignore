@@ -25,3 +25,11 @@ __pycache__/
 *.njsproj
 *.sln
 *.sw?
+
+# Python & Project Specific
+.venv/
+embeddings_cache.pkl
+dataset/
+*.csv
+*.xlsx
+

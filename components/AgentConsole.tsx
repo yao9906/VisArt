@@ -7,107 +7,169 @@ interface AgentConsoleProps {
   activeNodeId: string | null;
   onSelectNode: (nodeId: string) => void;
   isGenerating: boolean;
-  currentLogs: AgentLog[]; // To show logs occurring *before* a node is finalized
+  currentLogs: AgentLog[];
 }
+
+const roleConfig: Record<string, { color: string; bg: string; border: string; label: string; icon: JSX.Element }> = {
+  [AgentRole.CRITIC]: {
+    color: '#4a5ce4', bg: 'rgba(91,110,245,0.06)', border: 'rgba(91,110,245,0.25)', label: 'Critic',
+    icon: <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>,
+  },
+  [AgentRole.REFINER]: {
+    color: '#059669', bg: 'rgba(5,150,105,0.06)', border: 'rgba(5,150,105,0.25)', label: 'Refiner',
+    icon: <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" /></svg>,
+  },
+  [AgentRole.GENERATOR]: {
+    color: '#0891b2', bg: 'rgba(8,145,178,0.06)', border: 'rgba(8,145,178,0.25)', label: 'Generator',
+    icon: <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>,
+  },
+};
 
 const AgentConsole: React.FC<AgentConsoleProps> = ({ nodes, activeNodeId, onSelectNode, isGenerating, currentLogs }) => {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (bottomRef.current) {
-      bottomRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [nodes.length, currentLogs.length, isGenerating]);
 
-  // Updated colors for Light Theme
-  const getAgentColor = (role: AgentRole) => {
-    switch (role) {
-      case AgentRole.GENERATOR: return 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100';
-      case AgentRole.CRITIC: return 'border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100';
-      case AgentRole.REFINER: return 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100';
-      default: return 'border-slate-200 bg-slate-50 text-slate-600';
-    }
-  };
-
-  const getRoleIcon = (role: AgentRole) => {
-    switch (role) {
-      case AgentRole.GENERATOR: return '⚡';
-      case AgentRole.CRITIC: return '🧐';
-      case AgentRole.REFINER: return '🎨';
-      default: return '🤖';
-    }
-  };
+  const getCfg = (role: AgentRole) => roleConfig[role] || { color: '#64748b', bg: 'rgba(100,116,139,0.06)', border: 'rgba(100,116,139,0.2)', label: String(role), icon: <span>◈</span> };
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl flex flex-col h-full shadow-sm overflow-hidden relative group hover:shadow-md transition-shadow">
-      <div className="bg-slate-50/80 backdrop-blur-sm px-3 py-2 border-b border-slate-200 z-10">
-        <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2">
-          <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-sm" />
-          Workflow History & Console
-        </h3>
+    <div style={{
+      display: 'flex', flexDirection: 'column', height: '100%',
+      background: '#ffffff',
+      border: '1px solid var(--border-base)',
+      borderRadius: '12px', overflow: 'hidden',
+    }}>
+      {/* Header */}
+      <div style={{
+        padding: '9px 13px', flexShrink: 0,
+        borderBottom: '1px solid var(--border-base)',
+        background: 'var(--bg-subtle)',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--accent-primary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+          </svg>
+          <span style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--accent-primary)' }}>
+            Workflow Console
+          </span>
+        </div>
+        <span style={{ fontSize: '8px', color: 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace' }}>
+          {nodes.length} node{nodes.length !== 1 ? 's' : ''}
+        </span>
       </div>
-      
-      <div className="flex-grow overflow-y-auto p-3 space-y-3 custom-scrollbar bg-white">
+
+      {/* Node list */}
+      <div className="custom-scrollbar" style={{ flexGrow: 1, overflowY: 'auto', padding: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+
         {nodes.length === 0 && !isGenerating && (
-          <div className="text-center py-10 opacity-40">
-             <div className="text-2xl mb-2 grayscale">⚡</div>
-             <div className="text-[10px] uppercase tracking-widest text-slate-400">Ready to synthesize</div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px 0', gap: '10px' }}>
+            <div style={{
+              width: '40px', height: '40px', borderRadius: '10px',
+              background: 'var(--bg-muted)', border: '1px solid var(--border-base)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+              </svg>
+            </div>
+            <span style={{ fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', fontWeight: 600 }}>
+              No workflow nodes yet
+            </span>
           </div>
         )}
 
-        {/* Render History Nodes as Clickable Cards */}
-        {nodes.map((node) => {
-          const isActive = node.id === activeNodeId;
-          const lastLog = node.snapshot.logs[node.snapshot.logs.length - 1];
-          
-          return (
-            <div 
-              key={node.id}
-              onClick={() => onSelectNode(node.id)}
-              className={`
-                relative p-3 rounded-lg border cursor-pointer transition-all duration-200 group
-                ${isActive ? 'ring-2 ring-indigo-500/30 shadow-md scale-[1.01]' : 'opacity-80 hover:opacity-100'}
-                ${getAgentColor(node.role)}
-              `}
-            >
-              <div className="flex justify-between items-start mb-1">
-                <span className="text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5">
-                  <span>{getRoleIcon(node.role)}</span>
-                  {node.role}
-                </span>
-                <span className="text-[8px] font-mono opacity-60">{new Date(node.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}</span>
-              </div>
-              
-              <div className="text-[10px] font-bold mb-1.5">{node.label}</div>
-              
-              <div className="text-[9px] font-mono leading-relaxed opacity-90 pl-2 border-l border-current/20 line-clamp-4">
-                {lastLog?.content || "Processing..."}
-              </div>
+        {nodes.length > 0 && (
+          <div style={{ position: 'relative' }}>
+            {/* Timeline connector */}
+            {nodes.length > 1 && (
+              <div style={{ position: 'absolute', left: '13px', top: '20px', bottom: '10px', width: '1px', background: 'linear-gradient(to bottom, var(--border-soft), transparent)', pointerEvents: 'none' }} />
+            )}
 
-              {isActive && (
-                <div className="absolute -right-1 -top-1 w-2 h-2 bg-indigo-500 rounded-full animate-ping" />
-              )}
-            </div>
-          );
-        })}
+            {nodes.map((node, idx) => {
+              const isActive = node.id === activeNodeId;
+              const cfg = getCfg(node.role);
+              const lastLog = node.snapshot.logs?.[node.snapshot.logs.length - 1];
+              const time = new Date(node.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-        {/* Show active processing state if generating but not yet a node */}
+              return (
+                <div key={node.id} style={{ display: 'flex', gap: '8px', marginBottom: idx === nodes.length - 1 ? 0 : '6px', alignItems: 'flex-start' }}>
+                  {/* Role icon dot */}
+                  <div style={{
+                    width: '26px', height: '26px', borderRadius: '7px', flexShrink: 0,
+                    background: isActive ? cfg.bg : 'var(--bg-muted)',
+                    border: `1px solid ${isActive ? cfg.border : 'var(--border-base)'}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: isActive ? cfg.color : 'var(--text-muted)',
+                    cursor: 'pointer', transition: 'all 0.18s',
+                    zIndex: 1,
+                  }} onClick={() => onSelectNode(node.id)}>
+                    {cfg.icon}
+                  </div>
+
+                  {/* Card */}
+                  <div
+                    onClick={() => onSelectNode(node.id)}
+                    className={`workflow-node${isActive ? ' active' : ''}`}
+                    style={{ flex: 1, position: 'relative' }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '3px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <span style={{ fontSize: '9px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: cfg.color }}>
+                          {cfg.label}
+                        </span>
+                        <span style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-primary)' }}>· {node.label}</span>
+                      </div>
+                      <span style={{ fontSize: '8px', color: 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace' }}>{time}</span>
+                    </div>
+                    <div style={{
+                      fontSize: '9px', lineHeight: 1.55, color: 'var(--text-muted)',
+                      fontFamily: 'JetBrains Mono, monospace',
+                      display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as any, overflow: 'hidden',
+                    }}>
+                      {lastLog?.content || 'Processing...'}
+                    </div>
+                    {isActive && (
+                      <div style={{ position: 'absolute', top: '-3px', right: '-3px', width: '7px', height: '7px', borderRadius: '50%', background: cfg.color, boxShadow: `0 0 0 2px ${cfg.bg}, 0 0 0 3px ${cfg.border}` }} />
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Live generation */}
         {isGenerating && (
-          <div className="p-3 rounded-lg border border-indigo-100 bg-indigo-50/50 animate-pulse">
-            <div className="flex items-center gap-2 mb-2">
-               <div className="w-3 h-3 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-               <span className="text-[9px] font-bold text-indigo-600 uppercase">Agent Working...</span>
+          <div style={{
+            background: 'rgba(91,110,245,0.04)', border: '1px solid rgba(91,110,245,0.18)',
+            borderRadius: '8px', padding: '10px 12px',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' }}>
+              <div style={{
+                width: '14px', height: '14px', borderRadius: '50%',
+                border: '2px solid rgba(91,110,245,0.15)',
+                borderTop: '2px solid var(--accent-primary)',
+                animation: 'spin 0.8s linear infinite', flexShrink: 0,
+              }} />
+              <span style={{ fontSize: '9px', fontWeight: 700, color: 'var(--accent-primary)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                Agent Processing
+              </span>
             </div>
             {currentLogs.length > 0 && (
-               <div className="text-[9px] text-slate-500 font-mono pl-2 border-l border-indigo-200">
-                 {currentLogs[currentLogs.length - 1].content}
-               </div>
+              <div style={{ fontSize: '9px', color: 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace', paddingLeft: '8px', borderLeft: '2px solid rgba(91,110,245,0.2)', lineHeight: 1.5 }}>
+                {currentLogs[currentLogs.length - 1].content}
+              </div>
             )}
           </div>
         )}
-        
+
         <div ref={bottomRef} />
       </div>
+
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 };

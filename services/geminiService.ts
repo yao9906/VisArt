@@ -7,16 +7,100 @@ const getAI = () => new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" }
 // Use local backend if available, otherwise fallback to mock
 const BACKEND_URL = "http://localhost:8000";
 
+type KnowledgeRoutes = {
+  colorRules?: RAGKnowledgeItem[];
+  interactionRules?: RAGKnowledgeItem[];
+};
+
+export type RuleHit = {
+  topic: string;
+  condition: string;
+  rule: string;
+  source: string;
+  score: number;
+  matchedKeywords: string[];
+  reason: string;
+};
+
+export type RuleHitsByLane = {
+  design: RuleHit[];
+  color: RuleHit[];
+  interaction: RuleHit[];
+};
+
+const tokenize = (text: string): string[] =>
+  (text || "")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+
+const buildRuleText = (item: RAGKnowledgeItem): string =>
+  [
+    item.topic,
+    item.title,
+    item.rule,
+    item.condition,
+    item.evidence,
+    item.source,
+    (item.tags || []).join(" ")
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+const rankRules = (
+  rules: RAGKnowledgeItem[] = [],
+  query: string,
+  extraContext: string = "",
+  topK: number = 6
+): RuleHit[] => {
+  if (!rules.length) return [];
+  const qTokens = new Set(tokenize(`${query} ${extraContext}`));
+  const hasTimeSignal = /time|temporal|trend|date|year|month|day|timeline/i.test(query + " " + extraContext);
+
+  return rules
+    .map(rule => {
+      const rTokens = tokenize(buildRuleText(rule));
+      const matchedKeywords = Array.from(new Set(rTokens.filter(t => qTokens.has(t)))).slice(0, 6);
+      const overlap = matchedKeywords.length;
+      const bonus = hasTimeSignal && /time|temporal|axis|line|brush|zoom|focus|context/i.test(buildRuleText(rule)) ? 2 : 0;
+      const score = overlap + bonus;
+      return {
+        topic: rule.topic || rule.title || "Untitled Rule",
+        condition: rule.condition || "",
+        rule: rule.rule || "",
+        source: rule.source || "",
+        score,
+        matchedKeywords,
+        reason: matchedKeywords.length
+          ? `关键词匹配: ${matchedKeywords.join(", ")}${bonus > 0 ? "；时间语义加权" : ""}`
+          : bonus > 0
+            ? "时间语义加权命中"
+            : "基于规则语义相关性"
+      };
+    })
+    .sort((a, b) => b.score - a.score)
+    .slice(0, topK);
+};
+
+const toPromptRule = (item: RuleHit) => ({
+  topic: item.topic,
+  condition: item.condition,
+  rule: item.rule,
+  source: item.source,
+  retrieval_reason: item.reason
+});
+
 // DYNAMIC DATA SCHEMA GENERATOR
 const getDataHint = (data: any[]) => {
   if (!data || data.length === 0) return "Data is empty.";
-  
+
   // 1. FULL SCAN for Keys (Robustness)
   // We scan all rows (or up to 2000) to ensure we do not miss sparse keys.
   const scanLimit = Math.min(data.length, 5000);
   const keySet = new Set<string>();
   const valueTypes: Record<string, Set<string>> = {};
-  
+
   // 2. Statistical Profiling for Insights (Min/Max/Categories)
   const stats: Record<string, any> = {};
 
@@ -25,44 +109,44 @@ const getDataHint = (data: any[]) => {
     Object.keys(row).forEach(k => {
       keySet.add(k);
       if (!valueTypes[k]) valueTypes[k] = new Set();
-      
+
       const val = row[k];
       if (val === null || val === undefined) return;
 
       const type = val instanceof Date ? 'date' : typeof val;
       valueTypes[k].add(type);
-      
+
       // Accumulate basic stats
       if (!stats[k]) stats[k] = { values: [] };
       // Only keep random sample of values to avoid memory explosion, but enough for min/max check later
       if (stats[k].values.length < 100 || Math.random() < 0.1) {
-         stats[k].values.push(val);
+        stats[k].values.push(val);
       }
     });
   }
 
   const keys = Array.from(keySet);
-  
+
   // Finalize Stats Summary
   const typeSummary = keys.map(k => {
     const types = Array.from(valueTypes[k] || []).join('|');
     let statInfo = "";
-    
+
     // Numeric stats
     if (types.includes('number')) {
-       const nums = stats[k].values.filter((v: any) => typeof v === 'number');
-       if (nums.length > 0) {
-         const min = Math.min(...nums);
-         const max = Math.max(...nums);
-         statInfo = `(Range: ${min} to ${max})`;
-       }
-    } 
+      const nums = stats[k].values.filter((v: any) => typeof v === 'number');
+      if (nums.length > 0) {
+        const min = Math.min(...nums);
+        const max = Math.max(...nums);
+        statInfo = `(Range: ${min} to ${max})`;
+      }
+    }
     // Categorical stats (if string/boolean)
     else if (types.includes('string')) {
-       const uniquePreview = [...new Set(stats[k].values)].slice(0, 5).join(", ");
-       statInfo = `(Examples: ${uniquePreview}...)`;
+      const uniquePreview = [...new Set(stats[k].values)].slice(0, 5).join(", ");
+      statInfo = `(Examples: ${uniquePreview}...)`;
     }
-    
+
     return `${k}: [${types}] ${statInfo}`;
   }).join('\n');
 
@@ -70,11 +154,11 @@ const getDataHint = (data: any[]) => {
   let sampleSize = 50;
   let sample = data.slice(0, sampleSize);
   let sampleStr = JSON.stringify(sample);
-  
+
   // Truncate if too huge to prevent context overflow
   if (sampleStr.length > 15000) {
-     sample = data.slice(0, 10);
-     sampleStr = JSON.stringify(sample);
+    sample = data.slice(0, 10);
+    sampleStr = JSON.stringify(sample);
   }
 
   return `
@@ -99,16 +183,18 @@ DO NOT assume 'data' is a graph object { nodes, links } unless the columns expli
 };
 
 export const getCritiqueAndRetrieve = async (
-  code: string, 
+  code: string,
   prompt: string,
-  designGraph: DesignGraphPaper[] | any[], 
-  d3Knowledge: RAGKnowledgeItem[]
-): Promise<{ critique: string, ids: string[], graphContext?: any[], trace?: any }> => {
+  designGraph: DesignGraphPaper[] | any[],
+  d3Knowledge: RAGKnowledgeItem[],
+  knowledgeRoutes?: KnowledgeRoutes
+): Promise<{ critique: string, ids: string[], graphContext?: any[], trace?: any, ruleHits?: RuleHitsByLane }> => {
   const ai = getAI();
-  
+
   // --- REAL GRAPHRAG INTEGRATION ---
   let relevantGraphContext: any[] = [];
   let ragTrace = null;
+  let backendRuleHits: RuleHitsByLane | null = null;
 
   try {
     // Try to fetch from Python Backend
@@ -117,27 +203,61 @@ export const getCritiqueAndRetrieve = async (
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ query: prompt, top_k: 3 })
     });
-    
+
     if (ragResponse.ok) {
-        const json = await ragResponse.json();
-        // Check if it's the new format { results, trace }
-        if ('results' in json) {
-            relevantGraphContext = json.results;
-            ragTrace = json.trace;
-        } else {
-            // Backward compatibility
-            relevantGraphContext = json;
+      const json = await ragResponse.json();
+      // Check if it's the new format { results, trace }
+      if ('results' in json) {
+        relevantGraphContext = json.results;
+        ragTrace = json.trace;
+        if (json.mixed_package) {
+          const colorHits = (json.mixed_package.color_rules || []).map((x: any) => ({
+            topic: x.topic || "Untitled Rule",
+            condition: x.condition || "",
+            rule: x.rule || "",
+            source: x.source || "",
+            score: Number(x.score || 0),
+            matchedKeywords: x.matchedKeywords || x.matched_keywords || [],
+            reason: x.reason || ""
+          }));
+          const interactionHits = (json.mixed_package.interaction_rules || []).map((x: any) => ({
+            topic: x.topic || "Untitled Rule",
+            condition: x.condition || "",
+            rule: x.rule || "",
+            source: x.source || "",
+            score: Number(x.score || 0),
+            matchedKeywords: x.matchedKeywords || x.matched_keywords || [],
+            reason: x.reason || ""
+          }));
+
+          backendRuleHits = {
+            design: (relevantGraphContext || []).slice(0, 3).map((t: any) => ({
+              topic: t.task || "Graph Task",
+              condition: "Query-aligned task retrieved from GraphRAG",
+              rule: `Technique: ${t.technique || "N/A"}. Rationale: ${t.rationale || "N/A"}`,
+              source: t.coming_from_paper || "GraphRAG",
+              score: 1,
+              matchedKeywords: [],
+              reason: "GraphRAG task similarity retrieval"
+            })),
+            color: colorHits,
+            interaction: interactionHits
+          };
         }
+      } else {
+        // Backward compatibility
+        relevantGraphContext = json;
+      }
     } else {
-        throw new Error("Backend not available");
+      throw new Error("Backend not available");
     }
   } catch (e) {
     console.warn("GraphRAG Backend offline. Falling back to client-side simulation.");
-    
+
     // --- FALLBACK (Client-Side Simulation) ---
     // 1. Flatten the Graph for the context
     // We extract all "Task Mappings" as independent searchable units
-    const tasks = designGraph.flatMap((paper, pIdx) => 
+    const tasks = designGraph.flatMap((paper, pIdx) =>
       (paper.mappings || []).map((m: any, mIdx: number) => ({
         id: `task_${pIdx}_${mIdx}`,
         task: m.task_name,
@@ -147,11 +267,11 @@ export const getCritiqueAndRetrieve = async (
         system: paper.metadata?.system_name || "Unknown"
       }))
     );
-    relevantGraphContext = tasks; 
+    relevantGraphContext = tasks;
   }
 
   // Fallback Logic Setup (if backend failed, we need 'tasks' defined)
-  const tasks = designGraph.flatMap((paper, pIdx) => 
+  const tasks = designGraph.flatMap((paper, pIdx) =>
     (paper.mappings || []).map((m: any, mIdx: number) => ({
       id: `task_${pIdx}_${mIdx}`,
       task: m.task_name,
@@ -162,29 +282,63 @@ export const getCritiqueAndRetrieve = async (
     }))
   );
 
-  const d3Summary = d3Knowledge.map(k => ({ 
-    id: k.id, 
+  const d3Summary = d3Knowledge.map(k => ({
+    id: k.id,
     title: k.title,
-    tags: k.tags 
+    tags: k.tags
   }));
+
+  const selectedColorRuleHits = backendRuleHits?.color?.length
+    ? backendRuleHits.color
+    : rankRules(knowledgeRoutes?.colorRules || [], prompt, code, 3);
+  const selectedInteractionRuleHits = backendRuleHits?.interaction?.length
+    ? backendRuleHits.interaction
+    : rankRules(knowledgeRoutes?.interactionRules || [], prompt, code, 3);
+
+  const selectedColorRules = selectedColorRuleHits.map(toPromptRule);
+  const selectedInteractionRules = selectedInteractionRuleHits.map(toPromptRule);
 
   // Construct context string based on source
   let knowledgeContext = "";
   if (relevantGraphContext.length > 0 && relevantGraphContext !== tasks) {
-     // Backend Success path
-     knowledgeContext = `GraphRAG RETRIEVED KNOWLEDGE (Verified Scientific Tasks):
+    // Backend Success path
+    knowledgeContext = `GraphRAG RETRIEVED KNOWLEDGE (Verified Scientific Tasks):
      ${JSON.stringify(relevantGraphContext.map(t => ({
-        "Goal": t.task,
-        "Technique": t.technique,
-        "Reasoning": t.rationale,
-        "ComingFromPaper": t.coming_from_paper,
-        "RelatedUses": (t.related_applications || []).join(", ") 
-     })))}`;
+      "Goal": t.task,
+      "Technique": t.technique,
+      "Reasoning": t.rationale,
+      "ComingFromPaper": t.coming_from_paper,
+      "RelatedUses": (t.related_applications || []).join(", ")
+    })))}`;
   } else {
     // Fallback path
     const tasksSummary = JSON.stringify(tasks.map(t => ({ id: t.id, task: t.task, desc: t.description })));
     knowledgeContext = `AVAILABLE VISUALIZATION TASKS (KNOWLEDGE GRAPH NODES): ${tasksSummary}`;
   }
+
+  // Phase 2: Fetch structured constraint context from Constraint Engine
+  let constraintBlock = "";
+  try {
+    const constraintRes = await fetch(`${BACKEND_URL}/analyze`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: prompt, data: [] }) // data sent separately
+    });
+    if (constraintRes.ok) {
+      const ctx = await constraintRes.json();
+      constraintBlock = `
+    FORMALIZED CONSTRAINT CONTEXT (Constraint Engine Analysis):
+    [Task Inference - Brehmer-Munzner]:  Why=${ctx.task_spec?.why}, Search=${ctx.task_spec?.search}, Query=${ctx.task_spec?.query}
+    [Encoding Suggestions - Cleveland-McGill]:
+    ${JSON.stringify(ctx.encoding_suggestions || [])}
+    [Density Strategy]: Level=${ctx.density_strategy?.level}, Renderer=${ctx.density_strategy?.rendering_context}
+    [Palette Recommendation]: Type=${ctx.palette_recommendation?.type}, CVD-Safe=${ctx.palette_recommendation?.palette?.cvd_safe}
+    [Hard Constraints to Check]:
+    ${JSON.stringify(ctx.applicable_hard_constraints || [])}
+    [Soft Constraints (weighted)]:
+    ${JSON.stringify(ctx.applicable_soft_constraints || [])}`;
+    }
+  } catch { /* Constraint engine unavailable, proceed without */ }
 
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
@@ -193,21 +347,30 @@ export const getCritiqueAndRetrieve = async (
     CURRENT CODE: ${code}
     
     ${knowledgeContext}
+    ${constraintBlock}
+
+    MULTI-ROUTE SCIENTIFIC RULES (Collaborative Injection):
+    [Color/Perception Rules]
+    ${JSON.stringify(selectedColorRules)}
+    [Interaction Rules]
+    ${JSON.stringify(selectedInteractionRules)}
     
     D3 TEMPLATES: ${JSON.stringify(d3Summary)}
     
     Task:
-    1. Analyze the User Intent using the Retrieved Knowledge.
+    1. Analyze the User Intent using the Retrieved Knowledge AND the Formalized Constraint Context.
     2. If GraphRAG Knowledge is present, USE IT (Technique & Reasoning) to justify your critique.
-    3. Identify violations in the Current Code.
-    4. Recommend a D3 Template ID for structural upgrade.
+    3. Check encoding suggestions from the Constraint Engine — verify field-to-channel mappings follow Cleveland-McGill rankings.
+    4. Cross-check against color/perception and interaction rule lanes and identify any violations.
+    5. Recommend a D3 Template ID for structural upgrade.
+    6. In critique text, include a concise "Scientific Basis" mentioning which constraint(s) and lane(s) informed your judgment.
     
     Return JSON: { 
       "critique": "string", 
       "relevantTaskIds": ["id1", "id2"], 
       "recommendedD3Id": "id" 
     }`,
-    config: { 
+    config: {
       systemInstruction: SYSTEM_INSTRUCTIONS.CRITIC,
       responseMimeType: "application/json",
       responseSchema: {
@@ -226,19 +389,24 @@ export const getCritiqueAndRetrieve = async (
     const result = JSON.parse(response.text || "{}");
     const selectedTaskIds = result.relevantTaskIds || [];
     const bestD3Id = result.recommendedD3Id ? [result.recommendedD3Id] : [];
-    
+
     // If we used backend, relevantGraphContext is already set.
     // If we used fallback, we need to filter the tasks based on Gemini's selection.
     let finalContext = relevantGraphContext;
     if (relevantGraphContext === tasks) {
-         finalContext = tasks.filter(t => selectedTaskIds.includes(t.id));
+      finalContext = tasks.filter(t => selectedTaskIds.includes(t.id));
     }
 
     return {
       critique: result.critique || "Analysis completed.",
       ids: bestD3Id,
       graphContext: finalContext,
-      trace: ragTrace
+      trace: ragTrace,
+      ruleHits: {
+        design: [],
+        color: selectedColorRuleHits,
+        interaction: selectedInteractionRuleHits
+      }
     };
   } catch (e) {
     console.error("Agent Error", e);
@@ -248,15 +416,16 @@ export const getCritiqueAndRetrieve = async (
 
 export const refineViz = async (
   prompt: string,
-  baseCode: string, 
-  critique: string, 
-  data: any, 
+  baseCode: string,
+  critique: string,
+  data: any,
   retrievedItems: any[], // Can be D3 items or Graph items
   userFeedback?: string,
-  isEvolving: boolean = false
+  isEvolving: boolean = false,
+  knowledgeRoutes?: KnowledgeRoutes
 ): Promise<{ code: string, insight: string, nextSteps: string }> => {
   const ai = getAI();
-  
+
   // Format context flexibly
   const context = retrievedItems.map(item => {
     if (item.task) {
@@ -276,6 +445,9 @@ export const refineViz = async (
     }
   });
 
+  const selectedColorRules = rankRules(knowledgeRoutes?.colorRules || [], prompt, critique, 8).map(toPromptRule);
+  const selectedInteractionRules = rankRules(knowledgeRoutes?.interactionRules || [], prompt, critique, 8).map(toPromptRule);
+
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
     contents: `
@@ -284,6 +456,8 @@ export const refineViz = async (
     EXISTING CODE: "${baseCode}"
     
     REFERENCE KNOWLEDGE: ${JSON.stringify(context)}
+    SCIENTIFIC COLOR/PERCEPTION RULES: ${JSON.stringify(selectedColorRules)}
+    SCIENTIFIC INTERACTION RULES: ${JSON.stringify(selectedInteractionRules)}
     CRITIQUE: ${critique}
     ${userFeedback ? `USER FEEDBACK: "${userFeedback}"` : ""}
     
@@ -303,34 +477,38 @@ export const refineViz = async (
     10. ROBUSTNESS: ALWAYS check 'data' length. Recalculate 'd3.extent' or domains dynamically on the 'data'. DO NOT hardcode domains.
     11. SAFETY: Log 'data' at the start: 'console.log("D3 Input:", data)'. If data is empty, render a "No Data" text.
     12. D3 VERSION IS v7. NO 'd3.timeAdd'. Use 'd3.time[Interval].offset(date, step)' (e.g. d3.timeDay.offset(d, 1)) or native Date methods.
+    13. MULTI-ROUTE COMPLIANCE:
+      - Enforce at least one applicable Color/Perception rule in encoding decisions.
+      - Enforce at least one applicable Interaction rule (brush/zoom/filter/tooltip logic as appropriate to density and task).
+      - Avoid any design that conflicts with scientific evidence in provided rule lanes.
     
     OUTPUT FORMAT: JSON
     {
       "code": "string (the d3 code)",
-      "insight": "string (Explain the visual findings. Address the user's intent. If this is an iteration, explain what changed and why.)",
+      "insight": "string (Explain the visual findings. Address the user's intent. If this is an iteration, explain what changed and why. Mention which scientific lane(s) were applied.)",
       "nextSteps": "string (Suggest 1-2 concrete analytical actions. E.g., 'Filter for outlier Z', 'Switch to logarithmic scale'.)"
     }
     `,
-    config: { 
+    config: {
       systemInstruction: SYSTEM_INSTRUCTIONS.REFINER,
       responseMimeType: "application/json"
     }
   });
-  
+
   try {
-     const json = JSON.parse(response.text || "{}");
-     return {
-        code: extractCode(json.code || ""),
-        insight: json.insight || "Analysis pending...",
-        nextSteps: json.nextSteps || "Explore correlation between variables."
-     };
+    const json = JSON.parse(response.text || "{}");
+    return {
+      code: extractCode(json.code || ""),
+      insight: json.insight || "Analysis pending...",
+      nextSteps: json.nextSteps || "Explore correlation between variables."
+    };
   } catch (e) {
-     // Fallback if model fails to output JSON (rare with responseMimeType, but safe)
-     return {
-        code: extractCode(response.text || ""),
-        insight: "Could not parse insights.",
-        nextSteps: ""
-     };
+    // Fallback if model fails to output JSON (rare with responseMimeType, but safe)
+    return {
+      code: extractCode(response.text || ""),
+      insight: "Could not parse insights.",
+      nextSteps: ""
+    };
   }
 };
 
@@ -338,7 +516,7 @@ const extractCode = (text: string | any): string => {
   if (typeof text !== 'string') {
     return JSON.stringify(text); // Fallback: if somehow an object, stringify it (though this is likely wrong for code)
   }
-  
+
   let code = text;
   // Try to find the markdown block
   const match = text.match(/```(?:javascript|js|typescript|ts)?\n([\s\S]*?)```/);
@@ -349,7 +527,7 @@ const extractCode = (text: string | any): string => {
     const matchJson = text.match(/```json\n([\s\S]*?)```/);
     if (matchJson) return ""; // Fail safe if it picked up the wrapper JSON
   }
-  
+
   // Clean up dangerous imports or requires
   return code
     .replace(/import\s+[\s\S]*?from\s+['"].*?['"];?/g, '')
@@ -376,6 +554,6 @@ export const generateStandardViz = async (prompt: string, data: any): Promise<st
     `,
     config: { systemInstruction: SYSTEM_INSTRUCTIONS.GENERATOR }
   });
-  
+
   return extractCode(response.text || "");
 };

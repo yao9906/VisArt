@@ -1,0 +1,254 @@
+[
+    {
+        "id": "HC-ENC-001",
+        "type": "hard",
+        "layer": "encoding",
+        "name": "nominal_ordered_channel_ban",
+        "condition": {
+            "field_type": "nominal"
+        },
+        "constraint": {
+            "channel_must_not_be": [
+                "color_luminance",
+                "size",
+                "length"
+            ]
+        },
+        "rationale": "Nominal data has no inherent order; ordered channels (luminance, size) imply false ranking.",
+        "source": "Mackinlay 1986; Munzner 2014 Ch.5"
+    },
+    {
+        "id": "HC-ENC-002",
+        "type": "hard",
+        "layer": "encoding",
+        "name": "quantitative_shape_ban",
+        "condition": {
+            "field_type": "quantitative"
+        },
+        "constraint": {
+            "channel_must_not_be": [
+                "shape"
+            ]
+        },
+        "rationale": "Shape has no magnitude interpretation; cannot represent quantitative differences.",
+        "source": "Stevens 1946; Mackinlay 1986"
+    },
+    {
+        "id": "HC-ENC-003",
+        "type": "hard",
+        "layer": "encoding",
+        "name": "nominal_line_mark_ban",
+        "condition": {
+            "field_type": "nominal",
+            "axis": "x"
+        },
+        "constraint": {
+            "mark_must_not_be": [
+                "line"
+            ]
+        },
+        "rationale": "Line marks imply continuity and ordering that does not exist in nominal data. Use bar or point marks instead.",
+        "source": "Mackinlay 1986 Expressiveness Principle; Bavisitter (VIS 2024)"
+    },
+    {
+        "id": "HC-ENC-004",
+        "type": "hard",
+        "layer": "encoding",
+        "name": "3d_static_ban",
+        "condition": {
+            "output_format": "static_2d"
+        },
+        "constraint": {
+            "must_not_use": [
+                "3d_perspective",
+                "volume_encoding"
+            ]
+        },
+        "rationale": "3D visualizations in static 2D media cause systematic occlusion and foreshortening errors. Increases perceived complexity by +1.212 weight.",
+        "source": "Borgo et al. 2012 'Eye of the Beholder'; Munzner 2014"
+    },
+    {
+        "id": "HC-COLOR-001",
+        "type": "hard",
+        "layer": "perception",
+        "name": "contrast_ratio_minimum",
+        "condition": {
+            "element": "graphical_object",
+            "background": "any"
+        },
+        "constraint": {
+            "contrast_ratio": ">=3:1"
+        },
+        "rationale": "Users with low vision require distinct boundaries; 3:1 is the ISO standard minimum for graphical objects.",
+        "source": "WCAG 2.1 SC 1.4.11"
+    },
+    {
+        "id": "HC-COLOR-002",
+        "type": "hard",
+        "layer": "perception",
+        "name": "rainbow_jet_ban",
+        "condition": {
+            "data_type": "continuous_quantitative",
+            "encoding": "color"
+        },
+        "constraint": {
+            "colormap_must_not_be": [
+                "jet",
+                "rainbow",
+                "hsv_spectral"
+            ]
+        },
+        "rationale": "Non-monotonic luminance creates false boundaries (Mach bands) and confusing artifacts, misleading users.",
+        "source": "Borland & Taylor 2007"
+    },
+    {
+        "id": "HC-COLOR-003",
+        "type": "hard",
+        "layer": "perception",
+        "name": "red_green_distinction_ban",
+        "condition": {
+            "purpose": "categorical_distinction"
+        },
+        "constraint": {
+            "must_not_combine": [
+                "pure_red_#FF0000",
+                "pure_green_#00FF00"
+            ]
+        },
+        "rationale": "Red-Green color blindness (Deuteranopia/Protanopia) makes pure red and green appear identical. Use Vermilion (#D55E00) and Bluish-Green (#009E73).",
+        "source": "Okabe & Ito 2008"
+    },
+    {
+        "id": "HC-COLOR-004",
+        "type": "hard",
+        "layer": "perception",
+        "name": "color_only_encoding_ban",
+        "condition": {
+            "encoding": "color_hue",
+            "purpose": "state_or_category"
+        },
+        "constraint": {
+            "must_have_redundant_channel": true
+        },
+        "rationale": "Relying solely on hue makes data indistinguishable for CVD users. Must use redundant encoding (shape, pattern, label).",
+        "source": "WCAG 2.1 SC 1.4.1"
+    },
+    {
+        "id": "HC-COLOR-005",
+        "type": "hard",
+        "layer": "perception",
+        "name": "categorical_cardinality_limit",
+        "condition": {
+            "encoding": "color_hue",
+            "purpose": "categorical"
+        },
+        "constraint": {
+            "max_categories": 12
+        },
+        "rationale": "Visual search degrades rapidly beyond 12 colors; human short-term memory cannot reliably map legend items.",
+        "source": "Setlur & Stone 2015; Ware 2004"
+    },
+    {
+        "id": "HC-COLOR-006",
+        "type": "hard",
+        "layer": "perception",
+        "name": "diverging_scale_requires_midpoint",
+        "condition": {
+            "colormap_type": "diverging"
+        },
+        "constraint": {
+            "data_must_have": "meaningful_midpoint"
+        },
+        "rationale": "Diverging scales perceptually imply a critical midpoint (e.g., zero). Applying them to data without such a center misleads users about magnitude progression.",
+        "source": "Bavisitter (VIS 2024); Brewer 2003"
+    },
+    {
+        "id": "HC-INTER-001",
+        "type": "hard",
+        "layer": "interaction",
+        "name": "zoom_scale_constraints",
+        "condition": {
+            "zoom_enabled": true
+        },
+        "constraint": {
+            "must_define": [
+                "scaleExtent",
+                "translateExtent"
+            ]
+        },
+        "rationale": "Unconstrained zoom allows users to pan into empty space or zoom beyond data resolution, causing disorientation.",
+        "source": "Shneiderman 1996"
+    },
+    {
+        "id": "HC-INTER-002",
+        "type": "hard",
+        "layer": "interaction",
+        "name": "brush_reset_behavior",
+        "condition": {
+            "interaction": "brush",
+            "selection": "empty"
+        },
+        "constraint": {
+            "must_reset_all_views_to_default": true
+        },
+        "rationale": "Empty brush state must restore all views to 100% opacity, preventing users from getting stuck in empty filter state.",
+        "source": "Heer & Shneiderman 2012"
+    },
+    {
+        "id": "HC-MARK-001",
+        "type": "hard",
+        "layer": "encoding",
+        "name": "minimum_mark_size",
+        "condition": {
+            "mark_type": "any"
+        },
+        "constraint": {
+            "min_size_px": 2.5
+        },
+        "rationale": "Marks smaller than ~2px become invisible on standard displays, causing data to disappear.",
+        "source": "Heer & Bostock 2010; General Best Practice"
+    },
+    {
+        "id": "HC-DATA-001",
+        "type": "hard",
+        "layer": "data",
+        "name": "dynamic_domain_calculation",
+        "condition": {
+            "scale_domain": "any"
+        },
+        "constraint": {
+            "must_use_data_extent": true,
+            "must_not_hardcode_domain": true
+        },
+        "rationale": "Hardcoded domains fail when data changes. Always use d3.extent() or equivalent dynamic domain calculation.",
+        "source": "D3 Best Practice"
+    },
+    {
+        "id": "HC-DATA-002",
+        "type": "hard",
+        "layer": "data",
+        "name": "empty_data_handling",
+        "condition": {
+            "data_length": 0
+        },
+        "constraint": {
+            "must_display": "no_data_message"
+        },
+        "rationale": "Empty datasets should show explicit 'No Data' feedback rather than a blank canvas.",
+        "source": "UX Best Practice"
+    },
+    {
+        "id": "HC-STROOP-001",
+        "type": "hard",
+        "layer": "perception",
+        "name": "semantic_color_conflict_ban",
+        "condition": {
+            "data_labels": "have_strong_color_associations"
+        },
+        "constraint": {
+            "must_not_create_stroop_conflicts": true
+        },
+        "rationale": "Mismatched semantic colors (e.g., 'Strawberry'→Blue) trigger Stroop interference, significantly increasing cognitive load.",
+        "source": "Lin et al. 2013"
+    }
+]

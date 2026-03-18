@@ -42,6 +42,22 @@ export interface RAGKnowledgeItem {
   tags?: string[];
 }
 
+export interface RuleHit {
+  topic: string;
+  condition: string;
+  rule: string;
+  source: string;
+  score: number;
+  matchedKeywords: string[];
+  reason: string;
+}
+
+export interface RuleHitsByLane {
+  design: RuleHit[];
+  color: RuleHit[];
+  interaction: RuleHit[];
+}
+
 export interface VisualizationState {
   originalPrompt: string;
   standardCode: string;
@@ -50,6 +66,7 @@ export interface VisualizationState {
   isGenerating: boolean;
   logs: AgentLog[];
   retrievedItems: RAGKnowledgeItem[] | any[];
+  ruleHits?: RuleHitsByLane;
   hoveredCategory: string | null;
   ragTrace?: any;
   analysis?: {
@@ -68,6 +85,7 @@ export interface WorkflowNode {
     critique: string;
     refinedCode: string;
     retrievedItems: RAGKnowledgeItem[] | any[];
+    ruleHits?: RuleHitsByLane;
     logs: AgentLog[];
     ragTrace?: any;
     analysis?: {

@@ -1,442 +1,463 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Papa from 'papaparse';
-import { AgentRole, AgentLog, VisualizationState, RAGKnowledgeItem, WorkflowNode } from './types';
+import { AgentRole, AgentLog, VisualizationState, RAGKnowledgeItem, WorkflowNode, RuleHitsByLane } from './types';
 import { COMPLEX_TEST_DATA } from './constants';
 import { generateStandardViz, getCritiqueAndRetrieve, refineViz } from './services/geminiService';
+import { runDesignLint, getConstraintContext, generateRepairPrompt, LintReport } from './services/lintService';
 import AgentConsole from './components/AgentConsole';
 import D3Renderer from './components/D3Renderer';
 import RAGGraphInspector from './components/RAGGraphInspector';
+import LintReportComponent from './components/LintReport';
+
+// ── inline style helpers ──
+const S = {
+  app: { height: '100vh', display: 'flex', flexDirection: 'column' as const, background: 'var(--bg-app)', overflow: 'hidden' },
+  header: {
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    padding: '0 20px', height: '50px', flexShrink: 0,
+    background: 'var(--bg-surface)',
+    borderBottom: '1px solid var(--border-base)',
+    boxShadow: '0 1px 0 var(--border-base)',
+    zIndex: 40,
+  },
+  logoMark: {
+    width: '30px', height: '30px', borderRadius: '9px',
+    background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    boxShadow: '0 2px 8px rgba(91,110,245,0.3)',
+    flexShrink: 0,
+  },
+  logoTitle: { fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.3px', lineHeight: 1 },
+  logoSub: { fontSize: '9px', color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase' as const, marginTop: '1px' },
+  promptBar: {
+    padding: '10px 20px', flexShrink: 0,
+    background: 'var(--bg-surface)',
+    borderBottom: '1px solid var(--border-base)',
+    display: 'flex', gap: '10px', alignItems: 'center',
+    zIndex: 30,
+  },
+  main: { display: 'grid', gridTemplateColumns: '272px 1fr 272px', gap: '12px', padding: '12px', flexGrow: 1, minHeight: 0 },
+  panel: {
+    background: 'var(--bg-surface)', border: '1px solid var(--border-base)',
+    borderRadius: '12px', overflow: 'hidden',
+    display: 'flex', flexDirection: 'column' as const, height: '100%',
+  },
+  panelHeader: {
+    padding: '9px 13px', flexShrink: 0,
+    borderBottom: '1px solid var(--border-base)',
+    background: 'var(--bg-subtle)',
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+  },
+  panelBody: { flexGrow: 1, minHeight: 0, overflowY: 'auto' as const, padding: '12px' },
+};
 
 const App: React.FC = () => {
   const [data, setData] = useState<any[]>(COMPLEX_TEST_DATA);
   const [userInputPrompt, setUserInputPrompt] = useState<string>('');
-  
-  const [designRules, setDesignRules] = useState<RAGKnowledgeItem[]>([]); // Keep for backward compat if needed
-  const [designGraph, setDesignGraph] = useState<any[]>([]); // New Graph Data
+  const [colorRules, setColorRules] = useState<RAGKnowledgeItem[]>([]);
+  const [interactionRules, setInteractionRules] = useState<RAGKnowledgeItem[]>([]);
+  const [designGraph, setDesignGraph] = useState<any[]>([]);
   const [d3Knowledge, setD3Knowledge] = useState<RAGKnowledgeItem[]>([]);
-  
   const [history, setHistory] = useState<WorkflowNode[]>([]);
   const [activeNodeId, setActiveNodeId] = useState<string | null>(null);
-
   const [state, setState] = useState<VisualizationState>({
-    originalPrompt: '',
-    standardCode: '',
-    critique: '',
-    refinedCode: '',
-    isGenerating: false,
-    logs: [],
-    retrievedItems: [],
-    hoveredCategory: null
+    originalPrompt: '', standardCode: '', critique: '', refinedCode: '',
+    isGenerating: false, logs: [], retrievedItems: [],
+    ruleHits: { design: [], color: [], interaction: [] }, hoveredCategory: null,
   });
-
   const [activeStep, setActiveStep] = useState<AgentRole | null>(null);
   const [feedbackInput, setFeedbackInput] = useState('');
+  const [expandedRuleKeys, setExpandedRuleKeys] = useState<Set<string>>(new Set());
+  const [lintReport, setLintReport] = useState<LintReport | null>(null);
+  const [activePanel, setActivePanel] = useState<'rag' | 'data'>('rag');
 
-  // Safe stringify to prevent circular structure crashes in preview
-  const safeStringify = (obj: any) => {
-    try {
-      return JSON.stringify(obj, null, 2);
-    } catch (e) {
-      return "// [Warning] Circular data structure detected in preview.";
-    }
-  };
+  const toggleRuleExpand = (key: string) => setExpandedRuleKeys(prev => {
+    const next = new Set(prev);
+    next.has(key) ? next.delete(key) : next.add(key);
+    return next;
+  });
+
+  const safeStringify = (obj: any) => { try { return JSON.stringify(obj, null, 2); } catch { return '// Circular structure'; } };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const resetVizState = () => {
-      setState(prev => ({ 
-        ...prev, 
-        standardCode: '', 
-        refinedCode: '', 
-        critique: '', 
-        logs: [],
-        retrievedItems: []
-      }));
-    };
-
+    const file = event.target.files?.[0]; if (!file) return;
+    const reset = () => setState(prev => ({ ...prev, standardCode: '', refinedCode: '', critique: '', logs: [], retrievedItems: [], ruleHits: { design: [], color: [], interaction: [] }, ragTrace: undefined }));
     const reader = new FileReader();
     reader.onload = (e) => {
-      const content = e.target?.result as string; 
-      
+      const content = e.target?.result as string;
       if (file.name.toLowerCase().endsWith('.csv')) {
         Papa.parse(content, {
-          header: true,
-          dynamicTyping: true,
-          skipEmptyLines: true,
-          complete: (results) => {
-             if (results.errors.length > 0 && !results.data.length) {
-                alert("CSV Parsing Failed: " + results.errors[0].message);
-                return;
-             }
-             console.log("Parsed CSV Data:", results.data);
-             setData(results.data);
-             resetVizState();
-          }
+          header: true, dynamicTyping: true, skipEmptyLines: true,
+          complete: (r) => { if (!r.errors.length || r.data.length) { setData(r.data); reset(); } }
         });
       } else {
-        try {
-          const json = JSON.parse(content);
-          if (Array.isArray(json)) {
-            setData(json);
-            resetVizState();
-          } else {
-            alert("Invalid Data Format: Please upload a JSON Array.");
-          }
-        } catch (err) {
-          alert("Failed to parse JSON file.");
-        }
+        try { const json = JSON.parse(content); if (Array.isArray(json)) { setData(json); reset(); } } catch { alert('Failed to parse JSON.'); }
       }
     };
     reader.readAsText(file);
   };
 
   useEffect(() => {
-    const loadJSONL = async (path: string) => {
-      try {
-        const resp = await fetch(path);
-        if (!resp.ok) return [];
-        const text = await resp.text();
-        return text.split('\n')
-          .filter(line => line.trim())
-          .map(line => {
-            try { return JSON.parse(line); } catch(e) { return null; }
-          })
-          .filter(Boolean) as RAGKnowledgeItem[];
-      } catch (e) {
-        return [];
-      }
+    const parseKnowledge = (text: string): RAGKnowledgeItem[] => {
+      const trimmed = text.trim(); if (!trimmed) return [];
+      try { const p = JSON.parse(trimmed); if (Array.isArray(p)) return p; if (p && typeof p === 'object') return [p]; } catch { }
+      return trimmed.split('\n').map(l => l.trim()).filter(l => l && l !== '[' && l !== ']')
+        .map(l => { try { return JSON.parse(l.replace(/,$/, '')); } catch { return null; } }).filter(Boolean) as RAGKnowledgeItem[];
     };
-
-    const loadJSON = async (path: string) => {
-      try {
-        const resp = await fetch(path);
-        if (!resp.ok) return [];
-        return await resp.json();
-      } catch (e) {
-        return [];
-      }
-    };
-
-    Promise.all([
-      loadJSONL('design_rules.jsonl'), // Optional fallback
-      loadJSONL('d3_knowledge_base_full.jsonl'),
-      loadJSON('vis_design_graph.json')
-    ]).then(([rules, kb, graph]) => {
-      setDesignRules(rules);
-      setD3Knowledge(kb);
-      setDesignGraph(graph);
-    });
+    const loadJSONL = async (path: string) => { try { const r = await fetch(path); if (!r.ok) return []; return parseKnowledge(await r.text()); } catch { return []; } };
+    const loadJSON = async (path: string) => { try { const r = await fetch(path); if (!r.ok) return []; return await r.json(); } catch { return []; } };
+    Promise.all([loadJSONL('color_rules.jsonl'), loadJSONL('interaction_rules.jsonl'), loadJSONL('d3_knowledge_base_full.jsonl'), loadJSON('vis_design_graph.json')])
+      .then(([color, interaction, kb, graph]) => { setColorRules(color); setInteractionRules(interaction); setD3Knowledge(kb); setDesignGraph(graph); });
   }, []);
 
   const addNode = useCallback((role: AgentRole, label: string, parentId: string | null, snapshot: WorkflowNode['snapshot']) => {
-    const newNode: WorkflowNode = {
-      id: `node_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
-      parentId, label, role, snapshot, timestamp: Date.now()
-    };
-    setHistory(prev => [...prev, newNode]);
-    setActiveNodeId(newNode.id);
-    return newNode.id;
+    const newNode: WorkflowNode = { id: `node_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`, parentId, label, role, snapshot, timestamp: Date.now() };
+    setHistory(prev => [...prev, newNode]); setActiveNodeId(newNode.id); return newNode.id;
   }, []);
 
   const handleSelectNode = (nodeId: string) => {
-    const node = history.find(n => n.id === nodeId);
-    if (!node) return;
-    setActiveNodeId(nodeId);
-    setState(prev => ({ ...prev, ...node.snapshot, isGenerating: false }));
+    const node = history.find(n => n.id === nodeId); if (!node) return;
+    setActiveNodeId(nodeId); setState(prev => ({ ...prev, ...node.snapshot, isGenerating: false }));
   };
 
   const runWorkflow = async () => {
-    const finalPrompt = userInputPrompt.trim() || 'Map the hierarchical relationships between innovation hubs. Highlight dependencies and ensure extreme value visibility.';
-    
-    // Reset state for new run but keep history
-    setState(prev => ({ 
-      ...prev, 
-      originalPrompt: finalPrompt, 
-      isGenerating: true, 
-      logs: [],
-      // standardCode: '', // Keep previous visual while loading for better UX? No, clear it.
-      standardCode: '',
-      refinedCode: '',
-      critique: '',
-      retrievedItems: [] 
-    }));
-
+    const finalPrompt = userInputPrompt.trim() || 'Map the hierarchical relationships between innovation hubs.';
+    setState(prev => ({ ...prev, originalPrompt: finalPrompt, isGenerating: true, logs: [], standardCode: '', refinedCode: '', critique: '', retrievedItems: [], ruleHits: { design: [], color: [], interaction: [] }, ragTrace: undefined }));
     try {
-      // 1. Retrieval (RAG) - Skip standard baseline, go straight to fetching context
       setActiveStep(AgentRole.CRITIC);
-      const { critique, ids, graphContext, trace } = await getCritiqueAndRetrieve("", finalPrompt, designGraph, d3Knowledge);
-      
+      const { critique, ids, graphContext, trace, ruleHits } = await getCritiqueAndRetrieve('', finalPrompt, designGraph, d3Knowledge, { colorRules, interactionRules });
       const d3Found = d3Knowledge.filter(i => ids.includes(i.id));
       const found = [...d3Found, ...(graphContext || [])];
-      
-      const ragLogs = [{ role: AgentRole.CRITIC, content: `Knowledge Graph Retrieval Complete. Context size: ${found.length} items.`, timestamp: Date.now() }];
-      
-      // We don't have code yet, so snapshot just has context
-      const critSnapshot = { standardCode: '', critique, refinedCode: '', retrievedItems: found, logs: ragLogs, ragTrace: trace };
-      const critId = addNode(AgentRole.CRITIC, "Analysis", null, critSnapshot);
-      setState(prev => ({ ...prev, critique, retrievedItems: found, logs: ragLogs, ragTrace: trace }));
+      const emptyRuleHits: RuleHitsByLane = { design: [], color: [], interaction: [] };
+      const ragLogs = [{ role: AgentRole.CRITIC, content: `Knowledge Graph Retrieval Complete. Context: ${found.length} items.`, timestamp: Date.now() }];
+      const critId = addNode(AgentRole.CRITIC, 'Analysis', null, { standardCode: '', critique, refinedCode: '', retrievedItems: found, ruleHits: ruleHits || emptyRuleHits, logs: ragLogs, ragTrace: trace });
+      setState(prev => ({ ...prev, critique, retrievedItems: found, ruleHits: ruleHits || emptyRuleHits, logs: ragLogs, ragTrace: trace }));
 
-      // 2. Generation & Insight (Refinement)
       setActiveStep(AgentRole.REFINER);
-      // We pass empty string as baseCode. Ensure refineViz handles it (it does, it primarily uses prompt + context)
-      const result = await refineViz(finalPrompt, "", critique, data, found); 
-      
-      const refinerLogs = [...ragLogs, { role: AgentRole.REFINER, content: "Visualization and Insight Generation Complete.", timestamp: Date.now() }];
-      
-      const refSnapshot = { 
-        standardCode: '', 
-        critique, 
-        refinedCode: result.code, 
-        retrievedItems: found, 
-        logs: refinerLogs,
-        analysis: { insight: result.insight, nextSteps: result.nextSteps }
-      };
-      
-      addNode(AgentRole.REFINER, "Visualization", critId, refSnapshot);
-      
-      setState(prev => ({ 
-        ...prev, 
-        refinedCode: result.code, 
-        logs: refinerLogs, 
-        analysis: { insight: result.insight, nextSteps: result.nextSteps }
-      }));
+      const result = await refineViz(finalPrompt, '', critique, data, found, undefined, false, { colorRules, interactionRules });
+      const refLogs = [...ragLogs, { role: AgentRole.REFINER, content: 'Visualization and Insight Generation Complete.', timestamp: Date.now() }];
+      addNode(AgentRole.REFINER, 'Visualization', critId, { standardCode: '', critique, refinedCode: result.code, retrievedItems: found, ruleHits: ruleHits || emptyRuleHits, logs: refLogs, analysis: { insight: result.insight, nextSteps: result.nextSteps } });
+      setState(prev => ({ ...prev, refinedCode: result.code, logs: refLogs, ruleHits: prev.ruleHits, analysis: { insight: result.insight, nextSteps: result.nextSteps } }));
 
+      setTimeout(async () => {
+        const container = document.getElementById('enhanced-viz');
+        const lint = await runDesignLint(result.code, container, finalPrompt, data);
+        setLintReport(lint);
+      }, 1500);
     } catch (err) {
-      const errorLog = { role: AgentRole.GENERATOR, content: "Workflow Error: " + (err as Error).message, timestamp: Date.now() };
-      setState(prev => ({ ...prev, logs: [...prev.logs, errorLog] }));
-    } finally {
-      setState(prev => ({ ...prev, isGenerating: false }));
-      setActiveStep(null);
-    }
+      setState(prev => ({ ...prev, logs: [...prev.logs, { role: AgentRole.GENERATOR, content: 'Error: ' + (err as Error).message, timestamp: Date.now() }] }));
+    } finally { setState(prev => ({ ...prev, isGenerating: false })); setActiveStep(null); }
   };
 
   const handleUserRefine = async () => {
     if (!feedbackInput.trim() || state.isGenerating) return;
-    const feedback = feedbackInput;
-    setFeedbackInput('');
-    setState(prev => ({ ...prev, isGenerating: true }));
-    setActiveStep(AgentRole.REFINER);
-
+    const feedback = feedbackInput; setFeedbackInput('');
+    setState(prev => ({ ...prev, isGenerating: true })); setActiveStep(AgentRole.REFINER);
     try {
       const isEvolving = !!state.refinedCode;
-      const base = isEvolving ? state.refinedCode : state.standardCode;
-      // In iteration, the user feedback changes the intent. 
-      // We combine original prompt with feedback to maintain context while pivoting.
-      const iterationPrompt = `${state.originalPrompt}. REFINEMENT REQUEST: ${feedback}`;
-      const result = await refineViz(iterationPrompt, base, state.critique, data, state.retrievedItems, feedback, isEvolving);
-      
-      const iterationLogs = [...state.logs, { role: AgentRole.REFINER, content: `Manual Iteration: ${feedback}`, timestamp: Date.now() }];
-      addNode(AgentRole.REFINER, "Iteration", activeNodeId, {
-        standardCode: state.standardCode,
-        critique: state.critique,
-        refinedCode: result.code,
-        retrievedItems: state.retrievedItems,
-        logs: iterationLogs,
-        analysis: { insight: result.insight, nextSteps: result.nextSteps }
-      });
-      setState(prev => ({ 
-        ...prev, 
-        refinedCode: result.code, 
-        logs: iterationLogs,
-        analysis: { insight: result.insight, nextSteps: result.nextSteps }
-      }));
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setState(prev => ({ ...prev, isGenerating: false }));
-      setActiveStep(null);
-    }
+      const result = await refineViz(`${state.originalPrompt}. REFINEMENT: ${feedback}`, isEvolving ? state.refinedCode : state.standardCode, state.critique, data, state.retrievedItems, feedback, isEvolving, { colorRules, interactionRules });
+      const iterLogs = [...state.logs, { role: AgentRole.REFINER, content: `Iteration: ${feedback}`, timestamp: Date.now() }];
+      addNode(AgentRole.REFINER, 'Iteration', activeNodeId, { standardCode: state.standardCode, critique: state.critique, refinedCode: result.code, retrievedItems: state.retrievedItems, ruleHits: state.ruleHits, logs: iterLogs, analysis: { insight: result.insight, nextSteps: result.nextSteps } });
+      setState(prev => ({ ...prev, refinedCode: result.code, logs: iterLogs, analysis: { insight: result.insight, nextSteps: result.nextSteps } }));
+      setTimeout(async () => {
+        const container = document.getElementById('enhanced-viz');
+        const lint = await runDesignLint(result.code, container, state.originalPrompt + ' ' + feedback, data);
+        setLintReport(lint);
+      }, 1500);
+    } catch { } finally { setState(prev => ({ ...prev, isGenerating: false })); setActiveStep(null); }
   };
 
+  const laneConfig = [
+    { key: 'design' as const, label: 'Design Principles', tagClass: 'tag-indigo', accentColor: 'var(--accent-primary)' },
+    { key: 'color' as const, label: 'Color & Perception', tagClass: 'tag-amber', accentColor: 'var(--color-amber)' },
+    { key: 'interaction' as const, label: 'Interaction Rules', tagClass: 'tag-emerald', accentColor: 'var(--color-emerald)' },
+  ];
+
   return (
-    <div className="h-screen flex flex-col bg-slate-50 text-slate-800 overflow-hidden font-sans">
-      {/* Compressed Header */}
-      <header className="border-b border-slate-200 bg-white px-4 py-2 flex items-center justify-between shrink-0 shadow-sm z-30">
-        <div className="flex items-center gap-2">
-          <div className="p-1 bg-gradient-to-br from-indigo-500 to-purple-600 rounded shadow-md shadow-indigo-500/20">
-            <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+    <div style={S.app}>
+
+      {/* ── Header ── */}
+      <header style={S.header}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '11px' }}>
+          <div style={S.logoMark}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
             </svg>
           </div>
           <div>
-            <h1 className="text-sm font-bold tracking-tight leading-none text-slate-800">VizArt <span className="text-slate-400 font-light italic">RAG-Lab</span></h1>
+            <div style={S.logoTitle}>VisArt</div>
+            <div style={S.logoSub}>Constraint-Guided Visual Analytics</div>
           </div>
         </div>
 
-        <div className="text-[9px] text-slate-400 font-mono border border-slate-100 px-2 py-1 rounded bg-slate-50">
-          Knowledge: {designRules.length + d3Knowledge.length} Items | RAG Ready
+        {/* Center — live status */}
+        {state.isGenerating && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '7px', background: 'rgba(91,110,245,0.06)', border: '1px solid rgba(91,110,245,0.15)', borderRadius: '20px', padding: '4px 12px' }}>
+            <span className="status-dot active" />
+            <span style={{ fontSize: '10px', fontWeight: 600, color: 'var(--accent-primary)' }}>Agent Processing...</span>
+          </div>
+        )}
+
+        {/* Right badges */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+          <span className="tag tag-muted mono">{(colorRules.length + interactionRules.length + d3Knowledge.length).toLocaleString()} items</span>
+          {lintReport && (
+            <span className={`tag ${lintReport.score >= 70 ? 'tag-emerald' : lintReport.score >= 40 ? 'tag-amber' : 'tag-rose'}`}>
+              DQS {lintReport.grade} · {lintReport.score}
+            </span>
+          )}
+          <span className="tag tag-indigo">RAG Ready</span>
         </div>
       </header>
 
-      {/* Compressed Control Bar */}
-      <div className="bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 py-2 shrink-0 z-20">
-        <div className="flex gap-2">
-          <div className="relative flex-grow">
-            <input 
-              type="text"
-              value={userInputPrompt}
-              onChange={(e) => setUserInputPrompt(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && runWorkflow()}
-              placeholder="Map innovation hubs and dependencies..."
-              className="w-full bg-slate-100 border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-800 focus:bg-white focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-400 shadow-inner"
-            />
-            <div className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] text-slate-400 font-mono pointer-events-none uppercase tracking-tighter">Enter to Analyze</div>
+      {/* ── Prompt bar ── */}
+      <div style={S.promptBar}>
+        <div style={{ position: 'relative', flexGrow: 1 }}>
+          <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
           </div>
-          <button 
-            onClick={runWorkflow}
-            disabled={state.isGenerating}
-            className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-lg font-bold text-[10px] uppercase tracking-widest text-white transition-all shadow-md shadow-indigo-600/20 whitespace-nowrap active:scale-95"
-          >
-            {state.isGenerating ? "Processing" : "Run Pipeline"}
-          </button>
+          <input
+            type="text" value={userInputPrompt}
+            onChange={(e) => setUserInputPrompt(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && runWorkflow()}
+            placeholder="Describe your visualization — e.g. 'Show monthly revenue trends by product category over 2024...'"
+            className="vis-input"
+            style={{ paddingLeft: '34px' }}
+          />
+          <div style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '9px', color: 'var(--text-placeholder)', letterSpacing: '0.06em', textTransform: 'uppercase', pointerEvents: 'none' }}>⏎</div>
         </div>
+        <button className="btn-primary" onClick={runWorkflow} disabled={state.isGenerating}>
+          {state.isGenerating ? (
+            <>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ animation: 'spin 1s linear infinite', flexShrink: 0 }}>
+                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+              </svg>
+              Processing
+            </>
+          ) : (
+            <>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+              Run Pipeline
+            </>
+          )}
+        </button>
       </div>
 
-      {/* Expanded Main Content Area */}
-      <main className="flex-grow p-4 grid grid-cols-12 gap-4 min-h-0 bg-slate-50/50">
-        {/* Left Column: Data & Context */}
-        <div className="col-span-3 flex flex-col gap-4 min-h-0">
-          <section className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm h-32 shrink-0 flex flex-col relative group hover:shadow-md transition-shadow">
-             <div className="flex justify-between items-center mb-2 shrink-0">
-                <h2 className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Data Feed</h2>
-                <label className="cursor-pointer text-[9px] bg-slate-100 hover:bg-indigo-50 text-slate-500 hover:text-indigo-600 px-2 py-0.5 rounded border border-slate-200 hover:border-indigo-200 transition-all flex items-center gap-1 group/btn">
-                  <span>📂 Import CSV/JSON</span>
-                  <input type="file" accept=".json,.csv" className="hidden" onChange={handleFileUpload} />
-                </label>
-             </div>
-             <div className="overflow-auto custom-scrollbar flex-grow bg-slate-50 rounded-lg p-2 font-mono text-[8px] text-slate-600 border border-slate-100 whitespace-pre">
-                {safeStringify(data)}
-             </div>
-          </section>
+      {/* ── Main 3-column grid ── */}
+      <main style={S.main}>
 
-          <section className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm flex-grow flex flex-col min-h-0 group hover:shadow-md transition-shadow relative overflow-hidden">
-            <h2 className="text-[9px] font-black text-indigo-500 uppercase mb-2 tracking-widest flex items-center gap-2 shrink-0 z-10 relative">
-              RAG Process
-              <span className="text-[7px] bg-indigo-50 px-1 rounded text-slate-400 font-normal">
-                {state.ragTrace ? "Interactive Trace" : "Waiting"}
-              </span>
-            </h2>
-            
-            {/* Visual Trace Layer */}
-            {state.ragTrace && (
-               <div className="absolute inset-x-0 bottom-0 top-8 z-0 opacity-90">
-                 <RAGGraphInspector trace={state.ragTrace} />
-               </div>
-            )}
-
-            {/* List Layer (Overlay, hidden if trace exists or collapsible?) 
-                Actually, user asked for visualization instead of the list in the bottom left. 
-                But let's keep the list as a scrollable overlay or toggle?
-                For now, let's just make the list disappear or become minimal if trace is present, 
-                or better: putting the list in a tooltip or side-panel is hard. 
-                Let's replace the list with the graph completely as requested.
-            */}
-             {!state.ragTrace && (
-                <div className="overflow-y-auto space-y-2 custom-scrollbar pr-1 flex-grow relative z-10">
-                  {state.retrievedItems.map((item: any, i) => (
-                    <div key={i} className="bg-indigo-50/50 border border-indigo-100 rounded-md p-2 hover:bg-indigo-50 transition-colors cursor-help group">
-                      <div className="flex justify-between items-start mb-1">
-                        <span className="text-[7px] uppercase text-indigo-600 font-black px-1 py-0.5 bg-indigo-100 rounded tracking-tighter">
-                          {item.type || (item.technique ? 'GRAPH-RAG' : 'KNOWLEDGE')}
-                        </span>
-                        <span className="text-[7px] text-slate-400 font-mono opacity-0 group-hover:opacity-100 transition-opacity">
-                          {item.id || `#${i}`}
-                        </span>
-                      </div>
-                      <h4 className="text-[10px] font-bold text-slate-700 leading-tight mb-0.5">
-                        {item.task || item.title || item.topic || "Context Item"}
-                      </h4>
-                      <div className="text-[8px] text-slate-500 line-clamp-2">
-                         {item.technique && <span className="text-indigo-700 mr-1">&lt;{item.technique}&gt;</span>}
-                         {item.rationale || item.description || "Retrieved context."}
-                      </div>
-                    </div>
-                  ))}
-                  {state.retrievedItems.length === 0 && (
-                    <div className="h-full flex flex-col items-center justify-center text-slate-400 italic text-[9px] text-center">
-                      No context items yet.
-                    </div>
-                  )}
-                </div>
-             )}
-          </section>
-        </div>
-
-        {/* Center Column: Visualizations (Maximizing Height) */}
-        <div className="col-span-6 flex flex-col gap-4 min-h-0">
-          <div className="flex-[2] min-h-0 shadow-sm rounded-xl">
-            <D3Renderer 
-              title="Scientific Refinement" 
-              containerId="enhanced-viz" 
-              code={state.refinedCode} 
-              data={data} 
-              isLoading={state.isGenerating} 
-              onHover={(cat) => setState(s => ({ ...s, hoveredCategory: cat }))} 
-              hoveredCategory={state.hoveredCategory} 
-            />
+        {/* ═══ LEFT PANEL ═══ */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', minHeight: 0 }}>
+          {/* Tabs */}
+          <div style={{ display: 'flex', gap: '3px', background: 'var(--bg-muted)', borderRadius: '9px', padding: '3px', flexShrink: 0 }}>
+            {(['rag', 'data'] as const).map(tab => (
+              <button key={tab} onClick={() => setActivePanel(tab)}
+                className={`tab-btn ${activePanel === tab ? 'active' : 'inactive'}`}>
+                {tab === 'rag' ? '◈ RAG Context' : '⊞ Data Feed'}
+              </button>
+            ))}
           </div>
-          
-          {/* Analysis & Next Steps */}
-          {state.analysis && (
-            <div className="flex-1 min-h-[150px] bg-white border border-slate-200 rounded-xl p-3 shadow-sm overflow-hidden flex flex-col">
-              <div className="flex gap-4 h-full">
-                {/* Insights */}
-                <div className="flex-1 flex flex-col min-h-0">
-                   <h3 className="text-[9px] font-black text-indigo-600 uppercase mb-2 tracking-widest shrink-0">Key Insights</h3>
-                   <div className="flex-grow overflow-y-auto custom-scrollbar text-[10px] text-slate-600 leading-relaxed whitespace-pre-line pr-2 border-r border-slate-100">
-                      {state.analysis.insight}
-                   </div>
+
+          {/* RAG Context */}
+          {activePanel === 'rag' && (
+            <div className="card custom-scrollbar" style={{ flexGrow: 1, minHeight: 0, overflowY: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+
+              {state.ragTrace && (
+                <div>
+                  <div className="section-label" style={{ marginBottom: '6px' }}>Graph Trace</div>
+                  <div style={{ height: '105px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-base)' }}>
+                    <RAGGraphInspector trace={state.ragTrace} />
+                  </div>
                 </div>
-                
-                {/* Next Steps */}
-                <div className="flex-1 flex flex-col min-h-0">
-                   <h3 className="text-[9px] font-black text-rose-500 uppercase mb-2 tracking-widest shrink-0">Required Next Steps</h3>
-                    <div className="flex-grow overflow-y-auto custom-scrollbar text-[10px] text-slate-600 leading-relaxed whitespace-pre-line pr-1">
-                      {state.analysis.nextSteps}
-                   </div>
+              )}
+
+              {laneConfig.map(lane => {
+                const hits = state.ruleHits?.[lane.key] || [];
+                return (
+                  <div key={lane.key}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                      <span className="section-label" style={{ color: lane.accentColor }}>{lane.label}</span>
+                      <span className={`tag ${lane.tagClass}`}>{hits.length}</span>
+                    </div>
+                    {hits.length > 0 ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                        {hits.map((hit, idx) => {
+                          const k = `${lane.key}_${idx}_${hit.topic}`;
+                          const expanded = expandedRuleKeys.has(k);
+                          return (
+                            <div key={k} className="rule-card">
+                              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '6px' }}>
+                                <span style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-primary)', flex: 1, lineHeight: 1.35 }}>{hit.topic}</span>
+                                <div style={{ display: 'flex', gap: '4px', flexShrink: 0, alignItems: 'center' }}>
+                                  <span className="tag tag-muted mono" style={{ fontSize: '7.5px' }}>{hit.score}</span>
+                                  <button className="btn-secondary" onClick={() => toggleRuleExpand(k)}>{expanded ? '−' : '+'}</button>
+                                </div>
+                              </div>
+                              <div style={{ fontSize: '9.5px', color: 'var(--text-secondary)', marginTop: '4px', lineHeight: 1.55, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: expanded ? 999 : 2, WebkitBoxOrient: 'vertical' as any }}>
+                                {hit.rule || 'Rule content unavailable.'}
+                              </div>
+                              {expanded && (
+                                <div style={{ marginTop: '6px', paddingTop: '6px', borderTop: '1px solid var(--border-base)', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                                  {[['Condition', hit.condition], ['Source', hit.source], ['Reason', hit.reason]].map(([label, val]) =>
+                                    val ? <div key={label} style={{ fontSize: '9px', color: 'var(--text-muted)' }}><b style={{ color: 'var(--text-secondary)' }}>{label}: </b>{val}</div> : null
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: '9px', color: 'var(--text-placeholder)', fontStyle: 'italic', padding: '2px' }}>No matches yet.</div>
+                    )}
+                  </div>
+                );
+              })}
+
+              {state.retrievedItems.length > 0 && (
+                <div>
+                  <div className="section-label" style={{ marginBottom: '6px', color: 'var(--accent-primary)' }}>GraphRAG Retrieved</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                    {state.retrievedItems.slice(0, 3).map((item: any, i) => (
+                      <div key={i} className="rule-card" style={{ borderLeft: `2px solid var(--accent-primary)` }}>
+                        <span className="tag tag-indigo" style={{ marginBottom: '4px', display: 'inline-block' }}>{item.type || (item.technique ? 'Graph-RAG' : 'Knowledge')}</span>
+                        <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '3px', lineHeight: 1.3 }}>{item.task || item.title || item.topic || 'Context Item'}</div>
+                        <div style={{ fontSize: '9px', color: 'var(--text-secondary)', lineHeight: 1.5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as any }}>{item.rationale || item.description || 'Retrieved context.'}</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
+              )}
+            </div>
+          )}
+
+          {/* Data Feed */}
+          {activePanel === 'data' && (
+            <div className="card" style={{ flexGrow: 1, minHeight: 0, display: 'flex', flexDirection: 'column', padding: '12px', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                <span className="section-label">Dataset</span>
+                <label style={{ cursor: 'pointer' }}>
+                  <span className="btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
+                    Import CSV / JSON
+                  </span>
+                  <input type="file" accept=".json,.csv" style={{ display: 'none' }} onChange={handleFileUpload} />
+                </label>
+              </div>
+              <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', flexShrink: 0 }}>
+                <span className="tag tag-cyan">{data.length} rows</span>
+                <span className="tag tag-muted">{data.length > 0 ? Object.keys(data[0]).length : 0} fields</span>
+              </div>
+              <div className="code-block custom-scrollbar" style={{ flexGrow: 1, minHeight: 0, overflowY: 'auto' }}>
+                {safeStringify(data.slice(0, 10))}
+                {data.length > 10 && <div style={{ color: 'var(--text-placeholder)', marginTop: '4px', fontSize: '8px' }}>... {data.length - 10} more rows</div>}
               </div>
             </div>
           )}
         </div>
 
-        {/* Right Column: Console & Feedback */}
-        <div className="col-span-3 flex flex-col gap-4 min-h-0">
-          <div className="flex-grow min-h-0 shadow-sm rounded-xl">
-            <AgentConsole 
-              nodes={history} 
-              activeNodeId={activeNodeId} 
-              onSelectNode={handleSelectNode}
-              isGenerating={state.isGenerating}
-              currentLogs={state.logs}
+        {/* ═══ CENTER PANEL ═══ */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', minHeight: 0 }}>
+          {/* Visualization canvas */}
+          <div style={{ flexGrow: 2, minHeight: 0, borderRadius: '12px', overflow: 'hidden' }}>
+            <D3Renderer
+              title="VisArt Rendering" containerId="enhanced-viz"
+              code={state.refinedCode} data={data}
+              isLoading={state.isGenerating}
+              onHover={(cat) => setState(s => ({ ...s, hoveredCategory: cat }))}
+              hoveredCategory={state.hoveredCategory}
             />
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-xl p-3 flex flex-col h-1/3 min-h-[150px] overflow-hidden shadow-sm relative hover:shadow-md transition-shadow">
-            <h2 className="text-[9px] font-black text-emerald-600 uppercase mb-2 tracking-widest flex items-center gap-2 shrink-0">
-              Scientific Audit
-            </h2>
-            <div className="flex-grow overflow-y-auto text-[10px] text-slate-600 mb-2 leading-relaxed custom-scrollbar bg-slate-50 rounded-lg p-2 border border-slate-100">
-              {state.critique ? state.critique : <span className="text-slate-400 italic">Analysis pending...</span>}
+          {/* Analysis panel */}
+          {state.analysis && (
+            <div className="card" style={{ flexShrink: 0, padding: '12px', display: 'flex', gap: '12px', minHeight: '120px', maxHeight: '175px' }}>
+              {[
+                { label: 'Key Insights', icon: '◎', iconColor: 'var(--accent-primary)', content: state.analysis.insight },
+                { label: 'Next Steps', icon: '›', iconColor: 'var(--color-rose)', content: state.analysis.nextSteps },
+              ].map((item, i) => (
+                <React.Fragment key={item.label}>
+                  {i > 0 && <div style={{ width: '1px', background: 'var(--border-base)', flexShrink: 0 }} />}
+                  <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0 }}>
+                      <span style={{ fontWeight: 900, color: item.iconColor, fontSize: '12px' }}>{item.icon}</span>
+                      <span className="section-label" style={{ color: item.iconColor }}>{item.label}</span>
+                    </div>
+                    <div className="analysis-prose custom-scrollbar" style={{ flex: 1, overflowY: 'auto', paddingRight: '4px' }}>
+                      {item.content}
+                    </div>
+                  </div>
+                </React.Fragment>
+              ))}
             </div>
-            <div className="relative shrink-0">
-              <textarea 
+          )}
+
+          {/* Lint report */}
+          {lintReport && (
+            <div style={{ flexShrink: 0 }}>
+              <LintReportComponent
+                report={lintReport}
+                onAutoRepair={lintReport.score < 70 ? async () => {
+                  const repairPrompt = generateRepairPrompt(lintReport);
+                  if (!repairPrompt) return;
+                  setState(prev => ({ ...prev, isGenerating: true }));
+                  try {
+                    const result = await refineViz(state.originalPrompt, state.refinedCode, repairPrompt, data, state.retrievedItems, repairPrompt, true, { colorRules, interactionRules });
+                    setState(prev => ({ ...prev, refinedCode: result.code, isGenerating: false, analysis: { insight: result.insight, nextSteps: result.nextSteps } }));
+                    setTimeout(async () => { const c = document.getElementById('enhanced-viz'); setLintReport(await runDesignLint(result.code, c, state.originalPrompt, data)); }, 1500);
+                  } catch { setState(prev => ({ ...prev, isGenerating: false })); }
+                } : undefined}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* ═══ RIGHT PANEL ═══ */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', minHeight: 0 }}>
+          {/* Agent console */}
+          <div style={{ flexGrow: 1, minHeight: 0, borderRadius: '12px', overflow: 'hidden' }}>
+            <AgentConsole nodes={history} activeNodeId={activeNodeId} onSelectNode={handleSelectNode} isGenerating={state.isGenerating} currentLogs={state.logs} />
+          </div>
+
+          {/* Audit + Iterate */}
+          <div className="card" style={{ flexShrink: 0, padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px', minHeight: '210px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--color-emerald)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18" /></svg>
+              <span className="section-label" style={{ color: 'var(--color-emerald)' }}>Scientific Audit</span>
+            </div>
+            <div className="custom-scrollbar" style={{
+              flexGrow: 1, overflowY: 'auto', minHeight: 0,
+              background: 'var(--bg-subtle)', borderRadius: '8px', padding: '8px 10px',
+              border: '1px solid var(--border-base)',
+              fontSize: '10px', lineHeight: 1.7, color: 'var(--text-secondary)',
+            }}>
+              {state.critique
+                ? state.critique
+                : <span style={{ color: 'var(--text-placeholder)', fontStyle: 'italic' }}>Run the pipeline to see the scientific analysis from the Critic Agent...</span>}
+            </div>
+            <div style={{ position: 'relative', flexShrink: 0 }}>
+              <textarea
                 value={feedbackInput}
                 onChange={(e) => setFeedbackInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleUserRefine()}
-                placeholder="Iterate..."
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-[10px] text-slate-800 focus:bg-white focus:ring-1 focus:ring-indigo-500 outline-none h-12 resize-none transition-all placeholder:text-slate-400"
+                placeholder="Request a refinement... (Enter to send)"
+                className="vis-textarea"
+                style={{ height: '56px' }}
               />
-              <button onClick={handleUserRefine} className="absolute right-1 bottom-1.5 p-1 bg-indigo-600 hover:bg-indigo-700 rounded text-white shadow transition-all active:scale-90">
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+              <button onClick={handleUserRefine} className="btn-icon" style={{ position: 'absolute', right: '7px', bottom: '7px' }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
+                </svg>
               </button>
             </div>
           </div>
         </div>
       </main>
+
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 };
