@@ -94,8 +94,8 @@ const D3Renderer: React.FC<D3RendererProps> = ({ code, containerId, title, data,
         </span>
       </div>
 
-      {/* Canvas area */}
-      <div style={{ flex: 1, position: 'relative', overflow: 'hidden', background: '#fafafa' }}>
+      {/* Canvas area — overflow must be visible so fixed-position tooltips aren't clipped */}
+      <div style={{ flex: 1, position: 'relative', overflow: 'visible', background: '#fafafa' }}>
 
         {/* Loading state */}
         {isLoading && (
@@ -170,7 +170,16 @@ const D3Renderer: React.FC<D3RendererProps> = ({ code, containerId, title, data,
         <div
           id={containerId}
           ref={containerRef}
-          style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', touchAction: 'none', opacity: code ? 1 : 0, transition: 'opacity 0.4s' }}
+          style={{
+            width: '100%', height: '100%',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            overflow: 'hidden',
+            touchAction: 'none',
+            opacity: code ? 1 : 0,
+            transition: 'opacity 0.4s',
+            cursor: code ? 'grab' : 'default',
+            userSelect: 'none',
+          }}
         />
 
         {/* Hint */}

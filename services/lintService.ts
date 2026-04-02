@@ -48,7 +48,7 @@ function staticAnalysis(code: string): LintViolation[] {
     const domainMatch = code.match(/\.domain\(\s*\[\s*[\d"']/g);
     if (domainMatch) {
         violations.push({
-            id: 'LINT-S02',
+            id: 'LINT-S01',
             rule: 'Hardcoded domain/range',
             severity: 'error',
             message: `Scale domain appears hardcoded (${domainMatch.length} occurrence(s)). Use d3.extent() or data-driven domain.`,
@@ -56,10 +56,10 @@ function staticAnalysis(code: string): LintViolation[] {
         });
     }
 
-    // LINT-S03: No empty data handling
+    // LINT-S02: No empty data handling
     if (!code.includes('data.length') && !code.includes('!data') && !code.includes('data?.')) {
         violations.push({
-            id: 'LINT-S03',
+            id: 'LINT-S02',
             rule: 'No empty data handling',
             severity: 'warning',
             message: 'No check for empty data array. Add guard: if (!data || data.length === 0) return;',
@@ -67,10 +67,10 @@ function staticAnalysis(code: string): LintViolation[] {
         });
     }
 
-    // LINT-S04: Import/require usage
+    // LINT-S03: Import/require usage
     if (/\b(import|require)\s*\(/.test(code) || /^import\s+/m.test(code)) {
         violations.push({
-            id: 'LINT-S04',
+            id: 'LINT-S03',
             rule: 'Import/require detected',
             severity: 'error',
             message: 'Code contains import/require statements. D3 renderer provides d3 as a global.',
@@ -78,11 +78,11 @@ function staticAnalysis(code: string): LintViolation[] {
         });
     }
 
-    // LINT-S06: Mark size hardcoded as small constant
+    // LINT-S04: Mark size hardcoded as small constant
     const radiusMatch = code.match(/\.attr\(\s*["']r["']\s*,\s*(\d+)\s*\)/);
     if (radiusMatch && parseInt(radiusMatch[1]) < 2) {
         violations.push({
-            id: 'LINT-S06',
+            id: 'LINT-S04',
             rule: 'Mark size too small',
             severity: 'warning',
             message: `Mark radius is ${radiusMatch[1]}px (hardcoded). Minimum recommended: 2.5px.`,
@@ -90,10 +90,10 @@ function staticAnalysis(code: string): LintViolation[] {
         });
     }
 
-    // LINT-S07: Rainbow/Jet colormap usage
+    // LINT-S05: Rainbow/Jet colormap usage
     if (/interpolateRainbow|interpolateJet|interpolateHSV|d3\.scaleSequential.*rainbow/i.test(code)) {
         violations.push({
-            id: 'LINT-S07',
+            id: 'LINT-S05',
             rule: 'Banned colormap',
             severity: 'error',
             message: 'Rainbow/Jet colormap detected. Use Viridis/Magma/Cividis instead (Borland & Taylor 2007).',
@@ -102,10 +102,10 @@ function staticAnalysis(code: string): LintViolation[] {
         });
     }
 
-    // LINT-S08: No tooltip implementation
+    // LINT-S06: No tooltip implementation
     if (!code.includes('tooltip') && !code.includes('mouseover') && !code.includes('mouseenter') && !code.includes('onHover')) {
         violations.push({
-            id: 'LINT-S08',
+            id: 'LINT-S06',
             rule: 'No tooltip/hover interaction',
             severity: 'info',
             message: 'No tooltip or hover interaction detected. Consider adding for details-on-demand.',
@@ -123,7 +123,7 @@ function runtimeAnalysis(svgContainer: HTMLElement | null): LintViolation[] {
 
     if (!svgContainer) {
         violations.push({
-            id: 'LINT-R00',
+            id: 'LINT-R01',
             rule: 'No SVG container',
             severity: 'error',
             message: 'SVG container not found. Rendering may have failed.',
@@ -135,7 +135,7 @@ function runtimeAnalysis(svgContainer: HTMLElement | null): LintViolation[] {
     const svg = svgContainer.querySelector('svg');
     if (!svg) {
         violations.push({
-            id: 'LINT-R01',
+            id: 'LINT-R02',
             rule: 'Empty canvas',
             severity: 'error',
             message: 'No SVG element found in container.',
@@ -144,11 +144,11 @@ function runtimeAnalysis(svgContainer: HTMLElement | null): LintViolation[] {
         return violations;
     }
 
-    // LINT-R01: Empty canvas check
+    // LINT-R02: Empty canvas check
     const marks = svg.querySelectorAll('circle, rect, path, line, text, polygon, ellipse');
     if (marks.length === 0) {
         violations.push({
-            id: 'LINT-R01',
+            id: 'LINT-R02',
             rule: 'Empty canvas',
             severity: 'error',
             message: 'SVG contains no graphical marks (circles, rects, paths, etc.).',
@@ -180,7 +180,7 @@ function runtimeAnalysis(svgContainer: HTMLElement | null): LintViolation[] {
         });
     }
 
-    // LINT-R05: Mark visibility (minimum size)
+    // LINT-R04: Mark visibility (minimum size)
     let tinyMarkCount = 0;
     marks.forEach(mark => {
         const bbox = (mark as SVGGraphicsElement).getBBox?.();
@@ -190,7 +190,7 @@ function runtimeAnalysis(svgContainer: HTMLElement | null): LintViolation[] {
     });
     if (tinyMarkCount > 0) {
         violations.push({
-            id: 'LINT-R05',
+            id: 'LINT-R04',
             rule: 'Marks too small',
             severity: 'warning',
             message: `${tinyMarkCount} mark(s) are smaller than 2×2px and may be invisible.`,
@@ -199,7 +199,7 @@ function runtimeAnalysis(svgContainer: HTMLElement | null): LintViolation[] {
         });
     }
 
-    // LINT-R06: Color count check
+    // LINT-R05: Color count check
     const uniqueColors = new Set<string>();
     marks.forEach(mark => {
         const fill = getComputedStyle(mark).fill;
@@ -209,7 +209,7 @@ function runtimeAnalysis(svgContainer: HTMLElement | null): LintViolation[] {
     });
     if (uniqueColors.size > 12) {
         violations.push({
-            id: 'LINT-R06',
+            id: 'LINT-R05',
             rule: 'Excessive color categories',
             severity: 'warning',
             message: `${uniqueColors.size} distinct colors used (max recommended: 12). Consider grouping or faceting.`,
@@ -218,7 +218,7 @@ function runtimeAnalysis(svgContainer: HTMLElement | null): LintViolation[] {
         });
     }
 
-    // LINT-R08: Label readability
+    // LINT-R06: Label readability
     const textElements = svg.querySelectorAll('text');
     let smallTextCount = 0;
     textElements.forEach(text => {
@@ -229,7 +229,7 @@ function runtimeAnalysis(svgContainer: HTMLElement | null): LintViolation[] {
     });
     if (smallTextCount > 0) {
         violations.push({
-            id: 'LINT-R08',
+            id: 'LINT-R06',
             rule: 'Text too small',
             severity: 'warning',
             message: `${smallTextCount} text element(s) have font-size < 8px, may be unreadable.`,
@@ -237,12 +237,12 @@ function runtimeAnalysis(svgContainer: HTMLElement | null): LintViolation[] {
         });
     }
 
-    // LINT-R09: Legend check
+    // LINT-R07: Legend check
     const hasLegend = svg.querySelector('.legend, [class*="legend"], text[class*="legend"]') !== null;
     const hasDirectLabels = textElements.length > 2; // rough heuristic
     if (!hasLegend && !hasDirectLabels && uniqueColors.size > 1) {
         violations.push({
-            id: 'LINT-R09',
+            id: 'LINT-R07',
             rule: 'No legend',
             severity: 'warning',
             message: 'Multiple colors used but no legend found. Add legend or direct labels.',
@@ -250,11 +250,11 @@ function runtimeAnalysis(svgContainer: HTMLElement | null): LintViolation[] {
         });
     }
 
-    // LINT-R10: Axis check
+    // LINT-R08: Axis check
     const hasAxis = svg.querySelector('.tick, .axis, .domain') !== null;
     if (!hasAxis) {
         violations.push({
-            id: 'LINT-R10',
+            id: 'LINT-R08',
             rule: 'No axes',
             severity: 'warning',
             message: 'No axis elements (ticks/domain) found. Consider adding axes for context.',
@@ -262,7 +262,7 @@ function runtimeAnalysis(svgContainer: HTMLElement | null): LintViolation[] {
         });
     }
 
-    // LINT-R02: Overplotting estimation
+    // LINT-R09: Overplotting estimation
     if (marks.length > 100) {
         const positions = new Map<string, number>();
         let overlapCount = 0;
@@ -279,7 +279,7 @@ function runtimeAnalysis(svgContainer: HTMLElement | null): LintViolation[] {
         const overlapRatio = overlapCount / marks.length;
         if (overlapRatio > 0.3) {
             violations.push({
-                id: 'LINT-R02',
+                id: 'LINT-R09',
                 rule: 'Overplotting detected',
                 severity: 'warning',
                 message: `~${Math.round(overlapRatio * 100)}% of marks overlap. Consider jittering, opacity, or aggregation.`,

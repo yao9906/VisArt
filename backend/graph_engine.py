@@ -31,8 +31,10 @@ class VisualGraphRAG:
         )
         self.graph = nx.Graph()
         self.json_path = json_path
-        self.task_nodes = []
+        self.task_nodes: List[Dict[str, Any]] = []
         self.task_embeddings = None
+        self._embedding_dim: int | None = None  # auto-detected from first successful call
+
         
         self.load_graph()
         self.load_or_build_indices()
@@ -91,20 +93,27 @@ class VisualGraphRAG:
         
         print(f"Graph Built: {self.graph.number_of_nodes()} nodes, {self.graph.number_of_edges()} edges.")
 
-    def get_embedding(self, text: str, max_retries: int = 3):
-        """Wraps Gemini Embedding API (New SDK) with retry logic."""
+    def get_embedding(self, text: str, task_type: str = "RETRIEVAL_QUERY", max_retries: int = 3):
+        """Wraps Gemini Embedding API with retry logic. Falls back to a zero vector
+        whose dimension matches the model being used (auto-detected on first success)."""
         import time
+        fallback_dim = self._embedding_dim or 3072  # use detected dim or safe default
         if not text.strip():
-            return [0.0] * 768
+            return [0.0] * fallback_dim
 
         for attempt in range(max_retries):
             try:
                 result = self.client.models.embed_content(
                     model="gemini-embedding-001",
                     contents=text,
-                    config=types.EmbedContentConfig(task_type="RETRIEVAL_QUERY")
+                    config=types.EmbedContentConfig(task_type=task_type)
                 )
-                return result.embeddings[0].values
+                values = result.embeddings[0].values
+                # Auto-detect dimension from the first successful call
+                if self._embedding_dim is None:
+                    self._embedding_dim = len(values)
+                    print(f"Embedding dimension auto-detected: {self._embedding_dim}")
+                return values
             except Exception as e:
                 error_msg = str(e)
                 if "SSL" in error_msg or "EOF" in error_msg or "Connection" in error_msg:
@@ -120,7 +129,8 @@ class VisualGraphRAG:
                     print(f"Embedding error: {error_msg}")
                 break
         
-        return [0.0] * 768
+        fallback_dim = self._embedding_dim or 3072
+        return [0.0] * fallback_dim
 
     def load_or_build_indices(self):
         """Loads embeddings from cache if available, otherwise computes and saves them."""
@@ -135,12 +145,26 @@ class VisualGraphRAG:
             try:
                 with open(CACHE_FILE, 'rb') as f:
                     cache_data = pickle.load(f)
-                    if len(cache_data['embeddings']) == len(self.task_nodes):
-                        self.task_embeddings = cache_data['embeddings']
-                        print("Cache loaded successfully.")
-                        return
-                    else:
-                        print("Cache mismatch. Rebuilding...")
+                cached_emb = cache_data['embeddings']
+                count_match = len(cached_emb) == len(self.task_nodes)
+                # Validate embedding dimension matches the CURRENT model output.
+                # A mismatch (e.g. old 768-dim cache vs new 3072-dim model) causes
+                # a cosine_similarity crash at query time.
+                cached_dim = cached_emb.shape[1] if hasattr(cached_emb, 'shape') else len(cached_emb[0])
+                # Probe the model dimension with a cheap call
+                probe = self.get_embedding("test", task_type="RETRIEVAL_DOCUMENT")
+                model_dim = len(probe)
+                dim_match = (cached_dim == model_dim)
+                if count_match and dim_match:
+                    self.task_embeddings = cached_emb
+                    self._embedding_dim = model_dim
+                    print(f"Cache loaded successfully (dim={model_dim}).")
+                    return
+                elif not dim_match:
+                    print(f"Cache dimension mismatch: cached={cached_dim}, model={model_dim}. Rebuilding...")
+                    os.remove(CACHE_FILE)
+                else:
+                    print("Cache node-count mismatch. Rebuilding...")
             except Exception as e:
                 print(f"Cache load failed: {e}. Rebuilding...")
 
@@ -148,7 +172,7 @@ class VisualGraphRAG:
         texts = [t["text"] for t in self.task_nodes]
         embeddings = []
         for text in texts:
-            embeddings.append(self.get_embedding(text))
+            embeddings.append(self.get_embedding(text, task_type="RETRIEVAL_DOCUMENT"))
             
         self.task_embeddings = np.array(embeddings)
         

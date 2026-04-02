@@ -169,7 +169,6 @@ const App: React.FC = () => {
   };
 
   const laneConfig = [
-    { key: 'design' as const, label: 'Design Principles', tagClass: 'tag-indigo', accentColor: 'var(--accent-primary)' },
     { key: 'color' as const, label: 'Color & Perception', tagClass: 'tag-amber', accentColor: 'var(--color-amber)' },
     { key: 'interaction' as const, label: 'Interaction Rules', tagClass: 'tag-emerald', accentColor: 'var(--color-emerald)' },
   ];
@@ -362,7 +361,7 @@ const App: React.FC = () => {
         {/* ═══ CENTER PANEL ═══ */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', minHeight: 0 }}>
           {/* Visualization canvas */}
-          <div style={{ flexGrow: 2, minHeight: 0, borderRadius: '12px', overflow: 'hidden' }}>
+          <div style={{ flexGrow: 4, minHeight: 0, borderRadius: '12px', overflow: 'hidden' }}>
             <D3Renderer
               title="VisArt Rendering" containerId="enhanced-viz"
               code={state.refinedCode} data={data}
@@ -373,6 +372,7 @@ const App: React.FC = () => {
           </div>
 
           {/* Analysis panel */}
+
           {state.analysis && (
             <div className="card" style={{ flexShrink: 0, padding: '12px', display: 'flex', gap: '12px', minHeight: '120px', maxHeight: '175px' }}>
               {[
@@ -395,9 +395,9 @@ const App: React.FC = () => {
             </div>
           )}
 
-          {/* Lint report */}
+          {/* Lint report — compact */}
           {lintReport && (
-            <div style={{ flexShrink: 0 }}>
+            <div style={{ flexShrink: 0, maxHeight: '130px', overflowY: 'auto' }}>
               <LintReportComponent
                 report={lintReport}
                 onAutoRepair={lintReport.score < 70 ? async () => {

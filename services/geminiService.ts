@@ -1,4 +1,4 @@
-
+﻿
 import { GoogleGenAI, Type } from "@google/genai";
 import { SYSTEM_INSTRUCTIONS } from "../constants";
 import { RAGKnowledgeItem, DesignGraphPaper } from "../types";
@@ -465,19 +465,44 @@ export const refineViz = async (
     Additionally, provide Analytical Insights and Next Steps based on the data and query.
     
     STRICT RULES:
-   1. DO NOT include any 'import' or 'require' statements.
+    1. DO NOT include any 'import' or 'require' statements.
     2. DO NOT use 'd3.json' or 'd3.csv'. Use the variable 'data' directly.
     3. Use the provided 'width' and 'height' variables for SVG sizing.
     4. Start your code by selecting the container: 'const container = d3.select("#" + containerId);'.
-    5. You MUST wrap all elements in a <g class="zoom-container"> for d3.zoom support.
-    6. Ensure every mark has a 'data-category' attribute for syncing.
-    7. Ensure small values (min 2.5px) are visible.
-    8. IF the user asks for a Map or Spatial layout and you detect 'lat'/'long', use d3.geoMercator or d3.scaleLinear (if raw coordinates).
-    9. IF dealing with hierarchical names (e.g. "A.B.C"), ONLY THEN use split('.') logic. Do not force it on flat data.
-    10. ROBUSTNESS: ALWAYS check 'data' length. Recalculate 'd3.extent' or domains dynamically on the 'data'. DO NOT hardcode domains.
-    11. SAFETY: Log 'data' at the start: 'console.log("D3 Input:", data)'. If data is empty, render a "No Data" text.
-    12. D3 VERSION IS v7. NO 'd3.timeAdd'. Use 'd3.time[Interval].offset(date, step)' (e.g. d3.timeDay.offset(d, 1)) or native Date methods.
-    13. MULTI-ROUTE COMPLIANCE:
+    5. ZOOM (MANDATORY): You MUST implement d3.zoom. Structure EXACTLY as:
+       const svg = container.append('svg').attr('width', width).attr('height', height);
+       const g = svg.append('g').attr('class', 'zoom-container');
+       const zoom = d3.zoom().scaleExtent([0.5, 10]).on('zoom', (event) => { g.attr('transform', event.transform); });
+       svg.call(zoom);
+       All chart elements (axes, marks, labels) must be appended to 'g', NOT directly to 'svg'.
+    6. TOOLTIP (MANDATORY): Create a single tooltip div OUTSIDE the SVG, appended to document.body:
+       const tooltip = d3.select('body').append('div').attr('class', 'vis-tooltip').style('position', 'fixed').style('pointer-events', 'none').style('opacity', 0).style('background', 'rgba(15,23,42,0.85)').style('color','white').style('padding','6px 10px').style('border-radius','6px').style('font-size','11px').style('max-width','220px').style('z-index', '9999').style('line-height','1.5');
+       On mousemove: tooltip.style('left', (event.clientX + 14) + 'px').style('top', (event.clientY - 28) + 'px');
+       DO NOT use offsetX/offsetY or pageX/pageY. ALWAYS use event.clientX and event.clientY.
+       Remove tooltip on component exit: container.on('mouseleave', () => tooltip.remove());
+    7. BRUSH INTERACTION (MANDATORY for scatter plots and parallel coordinates): Implement d3.brush for rectangular selection.
+        Structure EXACTLY as:
+        const brush = d3.brush().extent([[0, 0], [innerWidth, innerHeight]]).on('brush end', (event) => {
+          if (!event.selection) { g.selectAll('.mark').style('opacity', 1); return; }
+          const [[x0, y0], [x1, y1]] = event.selection;
+          g.selectAll('.mark').style('opacity', d => {
+            const cx = xScale(d[xField]), cy = yScale(d[yField]);
+            return (cx >= x0 && cx <= x1 && cy >= y0 && cy <= y1) ? 1 : 0.15;
+          });
+        });
+        g.append('g').attr('class', 'brush').call(brush);
+        For PARALLEL COORDINATES: implement per-axis brush that highlights polylines passing through ALL active brush selections.
+    8. LEGEND (MANDATORY for color encoding): If you use a color scale, you MUST create a legend.
+       Place it inside "g" but translate it to an empty area (e.g., top-right corner using "innerWidth" minus a margin).
+       Group the legend elements in a "<g class='legend'>".
+    9. Ensure every mark has a 'data-category' attribute for syncing.
+    10. Ensure small values (min 2.5px) are visible.
+    11. IF the user asks for a Map or Spatial layout and you detect 'lat'/'long', use d3.geoMercator or d3.scaleLinear (if raw coordinates).
+    12. IF dealing with hierarchical names (e.g. "A.B.C"), ONLY THEN use split('.') logic. Do not force it on flat data.
+    13. ROBUSTNESS: ALWAYS check 'data' length. Recalculate 'd3.extent' or domains dynamically on the 'data'. DO NOT hardcode domains.
+    14. SAFETY: If data is empty, render a "No Data" text element in the center of the SVG.
+    15. D3 VERSION IS v7. NO 'd3.timeAdd'. Use 'd3.time[Interval].offset(date, step)' (e.g. d3.timeDay.offset(d, 1)) or native Date methods.
+    16. MULTI-ROUTE COMPLIANCE:
       - Enforce at least one applicable Color/Perception rule in encoding decisions.
       - Enforce at least one applicable Interaction rule (brush/zoom/filter/tooltip logic as appropriate to density and task).
       - Avoid any design that conflicts with scientific evidence in provided rule lanes.
