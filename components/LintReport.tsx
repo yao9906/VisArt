@@ -76,7 +76,7 @@ const LintReportComponent: React.FC<LintReportProps> = ({ report, onAutoRepair }
 
             {/* Violations */}
             {allViolations.length > 0 && (
-                <div style={{ maxHeight: '150px', overflowY: 'auto' }} className="custom-scrollbar">
+                <div style={{ overflowY: 'visible' }} className="custom-scrollbar">
                     {allViolations.map((v, i) => {
                         const cfg = severityConfig[v.severity] || severityConfig.info;
                         return (

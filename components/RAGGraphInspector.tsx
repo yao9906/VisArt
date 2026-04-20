@@ -2,18 +2,79 @@ import React, { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 
 interface RAGTraceProps {
-  trace: {
-    query: string;
-    root_nodes: any[];
-    traversed_edges: any[];
-  } | null;
+    trace: any | null;
 }
+
+const normalizeTrace = (trace: any): { query: string; rootNodes: any[]; traversedEdges: any[] } => {
+    if (!trace) {
+        return { query: "", rootNodes: [], traversedEdges: [] };
+    }
+
+    // Legacy single-trace payload
+    if (Array.isArray(trace.root_nodes) || Array.isArray(trace.traversed_edges)) {
+        return {
+            query: trace.query || "",
+            rootNodes: Array.isArray(trace.root_nodes) ? trace.root_nodes : [],
+            traversedEdges: Array.isArray(trace.traversed_edges) ? trace.traversed_edges : []
+        };
+    }
+
+    // New subtask payload: aggregate child traces
+    if (Array.isArray(trace.traces)) {
+        const rootMap = new Map<string, any>();
+        const edgeMap = new Map<string, any>();
+
+        trace.traces.forEach((t: any, idx: number) => {
+            const child = t?.trace || {};
+            const childRoots = Array.isArray(child.root_nodes) ? child.root_nodes : [];
+            const childEdges = Array.isArray(child.traversed_edges) ? child.traversed_edges : [];
+
+            childRoots.forEach((n: any) => {
+                const id = n?.id || `subtask_root_${idx}`;
+                if (!rootMap.has(id)) {
+                    rootMap.set(id, { ...n, id, label: n?.label || n?.task || id });
+                }
+            });
+
+            childEdges.forEach((e: any, eIdx: number) => {
+                const s = e?.source || `unknown_s_${idx}_${eIdx}`;
+                const tg = e?.target || `unknown_t_${idx}_${eIdx}`;
+                const key = `${s}->${tg}`;
+                if (!edgeMap.has(key)) {
+                    edgeMap.set(key, { ...e, source: s, target: tg });
+                }
+            });
+
+            // If child trace has no graph nodes, still keep a pseudo node for the subtask.
+            if (!childRoots.length) {
+                const pseudoId = `subtask_${idx}`;
+                if (!rootMap.has(pseudoId)) {
+                    rootMap.set(pseudoId, {
+                        id: pseudoId,
+                        label: t?.query || `Subtask ${idx + 1}`,
+                        type: "Subtask"
+                    });
+                }
+            }
+        });
+
+        return {
+            query: trace.query || trace?.decomposition?.synthesisGoal || "",
+            rootNodes: Array.from(rootMap.values()),
+            traversedEdges: Array.from(edgeMap.values())
+        };
+    }
+
+    return { query: trace.query || "", rootNodes: [], traversedEdges: [] };
+};
 
 const RAGGraphInspector: React.FC<RAGTraceProps> = ({ trace }) => {
   const svgRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
     if (!trace || !svgRef.current) return;
+
+        const normalized = normalizeTrace(trace);
 
     const width = svgRef.current.clientWidth || 300;
     const height = svgRef.current.clientHeight || 200;
@@ -28,16 +89,18 @@ const RAGGraphInspector: React.FC<RAGTraceProps> = ({ trace }) => {
     const nodeSet = new Set(["UserQuery"]);
 
     // 1. Vector Search Links (dashed)
-    trace.root_nodes.forEach((n, i) => {
+        normalized.rootNodes.forEach((n) => {
       if (!nodeSet.has(n.id)) {
-        nodes.push({ id: n.id, label: n.label.substring(0, 15) + "...", type: "Task", r: 10, full: n.label });
+                const rawLabel = String(n.label || n.task || n.id || "Node");
+                const shortLabel = rawLabel.length > 15 ? `${rawLabel.substring(0, 15)}...` : rawLabel;
+                nodes.push({ id: n.id, label: shortLabel, type: n.type === "Subtask" ? "Subtask" : "Task", r: 10, full: rawLabel });
         nodeSet.add(n.id);
       }
       links.push({ source: "UserQuery", target: n.id, type: "similarity", dashed: true });
     });
 
     // 2. Graph Edges (solid)
-    trace.traversed_edges.forEach(e => {
+        normalized.traversedEdges.forEach(e => {
         if (!nodeSet.has(e.source)) {
             nodes.push({ id: e.source, label: e.source, type:  e.source.startsWith('tech') ? 'Technique' : 'Paper', r: 8 }); 
             nodeSet.add(e.source);
@@ -77,6 +140,7 @@ const RAGGraphInspector: React.FC<RAGTraceProps> = ({ trace }) => {
         .attr("fill", (d: any) => {
             if (d.type === "Query") return "#10b981"; // User Input
             if (d.type === "Task") return "#f43f5e"; // Vector Result
+            if (d.type === "Subtask") return "#0ea5e9";
             if (d.type === "Technique") return "#8b5cf6";
             return "#64748b";
         })

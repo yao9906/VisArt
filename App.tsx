@@ -270,6 +270,37 @@ const App: React.FC = () => {
                   <div style={{ height: '105px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-base)' }}>
                     <RAGGraphInspector trace={state.ragTrace} />
                   </div>
+
+                  {state.ragTrace?.decomposition?.subtasks?.length > 0 && (
+                    <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span className="section-label" style={{ color: 'var(--accent-primary)' }}>Subtasks</span>
+                        <span className="tag tag-indigo">{state.ragTrace.decomposition.subtasks.length} planned</span>
+                      </div>
+
+                      {state.ragTrace.decomposition.synthesisGoal && (
+                        <div className="rule-card" style={{ borderLeft: '2px solid var(--accent-primary)' }}>
+                          <div style={{ fontSize: '9px', color: 'var(--text-muted)', marginBottom: '3px', letterSpacing: '0.06em', textTransform: 'uppercase' }}>One-Chart Goal</div>
+                          <div style={{ fontSize: '10px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                            {state.ragTrace.decomposition.synthesisGoal}
+                          </div>
+                        </div>
+                      )}
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                        {(state.ragTrace.traces || []).map((t: any, idx: number) => (
+                          <div key={`${t.query}_${idx}`} className="rule-card">
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+                              <span style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.35, flex: 1 }}>
+                                {idx + 1}. {t.query}
+                              </span>
+                              <span className="tag tag-cyan">{t.hitCount || 0} hits</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -397,7 +428,7 @@ const App: React.FC = () => {
 
           {/* Lint report — compact */}
           {lintReport && (
-            <div style={{ flexShrink: 0, maxHeight: '130px', overflowY: 'auto' }}>
+            <div style={{ flexShrink: 0, maxHeight: '220px', minHeight: '138px', overflowY: 'auto', marginTop: '-6px' }} className="custom-scrollbar">
               <LintReportComponent
                 report={lintReport}
                 onAutoRepair={lintReport.score < 70 ? async () => {

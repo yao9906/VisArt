@@ -48,6 +48,7 @@ Before generating code, you must reason about:
 1. Data Mapping: Which columns in the 'DATA PROFILE' match the user's vague terms? (e.g., "performance" -> "Horsepower" + "Acceleration")
 2. Visualization Strategy: Based on the 'REFERENCE KNOWLEDGE', what is the best academic standard for this task?
 3. Interaction Design: How will the user drill down? (Must include d3.brush or click events).
+4. Figure Consolidation: Prefer a single integrated figure that covers all key subtasks unless readability would collapse.
 
 PHASE 2: CODING RULES (Strict Adherence)
 1. DATA ACCESS: Use the global variable 'data' directly. Do NOT load files.
@@ -73,6 +74,30 @@ Return a SINGLE JSON object:
   "next_steps": "string (Recommendation for the next analysis step)"
 }
 `};
+
+export const SINGLE_FIGURE_MULTI_DIM_TEMPLATE = `
+SINGLE-FIGURE MULTI-DIM BLUEPRINT (GENERAL TEMPLATE)
+
+Goal:
+- Resolve multiple analytical sub-questions in one primary figure when readability allows.
+
+Design Procedure:
+1. Subtask-to-channel mapping:
+  - Assign each subtask to a distinct visual channel or layer (x/y, color, size, shape, opacity, glyph, annotation, contour, reference bands).
+2. Shared spatial frame:
+  - Keep all evidence in one coordinate system unless mathematically impossible.
+3. Layering order:
+  - Background context layer -> main quantitative marks -> emphasis layer -> annotation layer.
+4. Interaction strategy:
+  - Use zoom + tooltip + brush/filter to reveal details without splitting into many charts.
+5. Readability guardrails:
+  - If density is high, use aggregation/binning/alpha/jitter before introducing a second chart.
+6. Escalation rule:
+  - Introduce additional views only when one figure fails due to severe occlusion or incompatible scales.
+
+Output obligation:
+- In "insight", explicitly explain which subtask is answered by which channel/layer in the single figure.
+`;
 
 export const COMPLEX_TEST_DATA = [
   // Deep hierarchy + imports + extreme value variance

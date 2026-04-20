@@ -1,6 +1,6 @@
 ﻿
 import { GoogleGenAI, Type } from "@google/genai";
-import { SYSTEM_INSTRUCTIONS } from "../constants";
+import { SINGLE_FIGURE_MULTI_DIM_TEMPLATE, SYSTEM_INSTRUCTIONS } from "../constants";
 import { RAGKnowledgeItem, DesignGraphPaper } from "../types";
 
 const getAI = () => new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
@@ -90,6 +90,81 @@ const toPromptRule = (item: RuleHit) => ({
   source: item.source,
   retrieval_reason: item.reason
 });
+
+const dedupeSubtasks = (subtasks: string[] = []): string[] => {
+  const seen = new Set<string>();
+  const cleaned: string[] = [];
+  for (const raw of subtasks) {
+    const task = (raw || "").trim();
+    const key = task.toLowerCase();
+    if (!task || seen.has(key)) continue;
+    seen.add(key);
+    cleaned.push(task);
+  }
+  return cleaned.slice(0, 4);
+};
+
+const normalizeRuleHit = (x: any): RuleHit => ({
+  topic: x.topic || "Untitled Rule",
+  condition: x.condition || "",
+  rule: x.rule || "",
+  source: x.source || "",
+  score: Number(x.score || 0),
+  matchedKeywords: x.matchedKeywords || x.matched_keywords || [],
+  reason: x.reason || ""
+});
+
+const mergeRuleHits = (hits: RuleHit[], limit: number): RuleHit[] => {
+  const merged = new Map<string, RuleHit>();
+  for (const hit of hits) {
+    const k = `${hit.topic}|${hit.rule}`.toLowerCase();
+    const prev = merged.get(k);
+    if (!prev || hit.score > prev.score) {
+      merged.set(k, hit);
+    }
+  }
+  return Array.from(merged.values()).sort((a, b) => b.score - a.score).slice(0, limit);
+};
+
+const planSubtasks = async (ai: GoogleGenAI, prompt: string): Promise<{ subtasks: string[]; synthesisGoal: string }> => {
+  try {
+    const res = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: `
+      Break this visualization intent into 2-4 retrieval-oriented subtasks.
+      Keep each subtask specific (metric lens / comparison lens / segmentation lens / temporal lens).
+      Also provide a one-sentence synthesis goal that combines all subtasks into ONE integrated chart.
+
+      USER INTENT: "${prompt}"
+
+      Return JSON only.
+      `,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            subtasks: { type: Type.ARRAY, items: { type: Type.STRING } },
+            synthesisGoal: { type: Type.STRING }
+          },
+          required: ["subtasks", "synthesisGoal"]
+        }
+      }
+    });
+
+    const parsed = JSON.parse(res.text || "{}");
+    const subtasks = dedupeSubtasks(parsed.subtasks || []);
+    return {
+      subtasks: subtasks.length ? subtasks : [prompt],
+      synthesisGoal: parsed.synthesisGoal || "Consolidate multiple analytic facets into one coordinated chart."
+    };
+  } catch {
+    return {
+      subtasks: [prompt],
+      synthesisGoal: "Consolidate multiple analytic facets into one coordinated chart."
+    };
+  }
+};
 
 // DYNAMIC DATA SCHEMA GENERATOR
 const getDataHint = (data: any[]) => {
@@ -191,91 +266,11 @@ export const getCritiqueAndRetrieve = async (
 ): Promise<{ critique: string, ids: string[], graphContext?: any[], trace?: any, ruleHits?: RuleHitsByLane }> => {
   const ai = getAI();
 
-  // --- REAL GRAPHRAG INTEGRATION ---
-  let relevantGraphContext: any[] = [];
-  let ragTrace = null;
-  let backendRuleHits: RuleHitsByLane | null = null;
-
-  try {
-    // Try to fetch from Python Backend
-    const ragResponse = await fetch(`${BACKEND_URL}/retrieve`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query: prompt, top_k: 3 })
-    });
-
-    if (ragResponse.ok) {
-      const json = await ragResponse.json();
-      // Check if it's the new format { results, trace }
-      if ('results' in json) {
-        relevantGraphContext = json.results;
-        ragTrace = json.trace;
-        if (json.mixed_package) {
-          const colorHits = (json.mixed_package.color_rules || []).map((x: any) => ({
-            topic: x.topic || "Untitled Rule",
-            condition: x.condition || "",
-            rule: x.rule || "",
-            source: x.source || "",
-            score: Number(x.score || 0),
-            matchedKeywords: x.matchedKeywords || x.matched_keywords || [],
-            reason: x.reason || ""
-          }));
-          const interactionHits = (json.mixed_package.interaction_rules || []).map((x: any) => ({
-            topic: x.topic || "Untitled Rule",
-            condition: x.condition || "",
-            rule: x.rule || "",
-            source: x.source || "",
-            score: Number(x.score || 0),
-            matchedKeywords: x.matchedKeywords || x.matched_keywords || [],
-            reason: x.reason || ""
-          }));
-
-          backendRuleHits = {
-            design: (relevantGraphContext || []).slice(0, 3).map((t: any) => ({
-              topic: t.task || "Graph Task",
-              condition: "Query-aligned task retrieved from GraphRAG",
-              rule: `Technique: ${t.technique || "N/A"}. Rationale: ${t.rationale || "N/A"}`,
-              source: t.coming_from_paper || "GraphRAG",
-              score: 1,
-              matchedKeywords: [],
-              reason: "GraphRAG task similarity retrieval"
-            })),
-            color: colorHits,
-            interaction: interactionHits
-          };
-        }
-      } else {
-        // Backward compatibility
-        relevantGraphContext = json;
-      }
-    } else {
-      throw new Error("Backend not available");
-    }
-  } catch (e) {
-    console.warn("GraphRAG Backend offline. Falling back to client-side simulation.");
-
-    // --- FALLBACK (Client-Side Simulation) ---
-    // 1. Flatten the Graph for the context
-    // We extract all "Task Mappings" as independent searchable units
-    const tasks = designGraph.flatMap((paper, pIdx) =>
-      (paper.mappings || []).map((m: any, mIdx: number) => ({
-        id: `task_${pIdx}_${mIdx}`,
-        task: m.task_name,
-        description: m.task_description,
-        technique: m.design_technique,
-        rationale: m.rationale,
-        system: paper.metadata?.system_name || "Unknown"
-      }))
-    );
-    relevantGraphContext = tasks;
-  }
-
-  // Fallback Logic Setup (if backend failed, we need 'tasks' defined)
   const tasks = designGraph.flatMap((paper, pIdx) =>
     (paper.mappings || []).map((m: any, mIdx: number) => ({
       id: `task_${pIdx}_${mIdx}`,
       task: m.task_name,
-      description: m.task_description, // Ensure property name matches what Gemini expects
+      description: m.task_description,
       technique: m.design_technique,
       rationale: m.rationale,
       system: paper.metadata?.system_name || "Unknown"
@@ -287,6 +282,108 @@ export const getCritiqueAndRetrieve = async (
     title: k.title,
     tags: k.tags
   }));
+
+  const { subtasks, synthesisGoal } = await planSubtasks(ai, prompt);
+  const retrievalQueries = dedupeSubtasks([prompt, ...subtasks]).slice(0, 5);
+
+  // --- REAL GRAPHRAG INTEGRATION ---
+  let relevantGraphContext: any[] = [];
+  let ragTrace = null;
+  let backendRuleHits: RuleHitsByLane | null = null;
+  let usedBackend = false;
+
+  try {
+    const retrievalSettled = await Promise.allSettled(
+      retrievalQueries.map(async (query, idx) => {
+        const topK = idx === 0 ? 4 : 2;
+        const ragResponse = await fetch(`${BACKEND_URL}/retrieve`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query, top_k: topK })
+        });
+
+        if (!ragResponse.ok) {
+          throw new Error(`retrieve failed for subtask: ${query}`);
+        }
+
+        const json = await ragResponse.json();
+        if (json && typeof json === "object" && 'results' in json) {
+          return {
+            query,
+            results: json.results || [],
+            trace: json.trace || null,
+            mixedPackage: json.mixed_package || null
+          };
+        }
+
+        return {
+          query,
+          results: Array.isArray(json) ? json : [],
+          trace: null,
+          mixedPackage: null
+        };
+      })
+    );
+
+    const successful = retrievalSettled
+      .filter((r): r is PromiseFulfilledResult<{ query: string; results: any[]; trace: any; mixedPackage: any }> => r.status === "fulfilled")
+      .map(r => r.value);
+
+    if (!successful.length) {
+      throw new Error("Backend not available");
+    }
+
+    usedBackend = true;
+
+    const mergedContext = new Map<string, any>();
+    const allColorHits: RuleHit[] = [];
+    const allInteractionHits: RuleHit[] = [];
+
+    for (const hit of successful) {
+      for (const item of hit.results || []) {
+        const key = `${item.task || ""}|${item.technique || ""}|${item.description || item.rationale || ""}`.toLowerCase();
+        if (!mergedContext.has(key)) {
+          mergedContext.set(key, item);
+        }
+      }
+
+      if (hit.mixedPackage) {
+        allColorHits.push(...(hit.mixedPackage.color_rules || []).map(normalizeRuleHit));
+        allInteractionHits.push(...(hit.mixedPackage.interaction_rules || []).map(normalizeRuleHit));
+      }
+    }
+
+    relevantGraphContext = Array.from(mergedContext.values()).slice(0, 12);
+    ragTrace = {
+      mode: "subtask_retrieval",
+      decomposition: {
+        subtasks,
+        synthesisGoal
+      },
+      traces: successful.map(s => ({
+        query: s.query,
+        hitCount: (s.results || []).length,
+        trace: s.trace
+      }))
+    };
+
+    backendRuleHits = {
+      design: (relevantGraphContext || []).slice(0, 4).map((t: any) => ({
+        topic: t.task || "Graph Task",
+        condition: "Subtask-aligned task retrieved from GraphRAG",
+        rule: `Technique: ${t.technique || "N/A"}. Rationale: ${t.rationale || "N/A"}`,
+        source: t.coming_from_paper || "GraphRAG",
+        score: 1,
+        matchedKeywords: [],
+        reason: "Merged from decomposed multi-subtask retrieval"
+      })),
+      color: mergeRuleHits(allColorHits, 6),
+      interaction: mergeRuleHits(allInteractionHits, 6)
+    };
+  } catch (e) {
+    console.warn("GraphRAG Backend offline. Falling back to client-side simulation.");
+    relevantGraphContext = tasks;
+  }
 
   const selectedColorRuleHits = backendRuleHits?.color?.length
     ? backendRuleHits.color
@@ -300,7 +397,7 @@ export const getCritiqueAndRetrieve = async (
 
   // Construct context string based on source
   let knowledgeContext = "";
-  if (relevantGraphContext.length > 0 && relevantGraphContext !== tasks) {
+  if (usedBackend) {
     // Backend Success path
     knowledgeContext = `GraphRAG RETRIEVED KNOWLEDGE (Verified Scientific Tasks):
      ${JSON.stringify(relevantGraphContext.map(t => ({
@@ -344,6 +441,8 @@ export const getCritiqueAndRetrieve = async (
     model: 'gemini-3-flash-preview',
     contents: `
     USER INTENT: "${prompt}"
+    DECOMPOSED SUBTASKS: ${JSON.stringify(subtasks)}
+    ONE-CHART SYNTHESIS TARGET: ${synthesisGoal}
     CURRENT CODE: ${code}
     
     ${knowledgeContext}
@@ -364,6 +463,7 @@ export const getCritiqueAndRetrieve = async (
     4. Cross-check against color/perception and interaction rule lanes and identify any violations.
     5. Recommend a D3 Template ID for structural upgrade.
     6. In critique text, include a concise "Scientific Basis" mentioning which constraint(s) and lane(s) informed your judgment.
+    7. Prefer a SINGLE integrated chart strategy when possible; only recommend multiple views if one chart cannot preserve readability.
     
     Return JSON: { 
       "critique": "string", 
@@ -458,6 +558,7 @@ export const refineViz = async (
     REFERENCE KNOWLEDGE: ${JSON.stringify(context)}
     SCIENTIFIC COLOR/PERCEPTION RULES: ${JSON.stringify(selectedColorRules)}
     SCIENTIFIC INTERACTION RULES: ${JSON.stringify(selectedInteractionRules)}
+    SINGLE-FIGURE MULTI-DIM TEMPLATE: ${SINGLE_FIGURE_MULTI_DIM_TEMPLATE}
     CRITIQUE: ${critique}
     ${userFeedback ? `USER FEEDBACK: "${userFeedback}"` : ""}
     
@@ -506,6 +607,11 @@ export const refineViz = async (
       - Enforce at least one applicable Color/Perception rule in encoding decisions.
       - Enforce at least one applicable Interaction rule (brush/zoom/filter/tooltip logic as appropriate to density and task).
       - Avoid any design that conflicts with scientific evidence in provided rule lanes.
+    17. SINGLE-FIGURE PRIORITY (CRITICAL):
+      - Default to ONE integrated chart that answers all major subtasks.
+      - Use multi-channel encodings in one canvas (position + color + size + shape + layers + annotations) before considering small multiples.
+      - Use multiple charts only when a single chart would cause severe occlusion or interpretation failure.
+      - If a single chart is selected, explain in insight how each subtask is represented in that one figure.
     
     OUTPUT FORMAT: JSON
     {
